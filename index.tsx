@@ -1,9 +1,12 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
-if ('serviceWorker' in navigator) {
+// Service Worker следует регистрировать только в производственной среде,
+// так как в среде разработки AI Studio возникает ошибка Same-Origin Policy.
+const isDevelopmentEnvironment = window.location.hostname.includes('usercontent.goog');
+
+if ('serviceWorker' in navigator && !isDevelopmentEnvironment) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/service-worker.js')
       .then(registration => {
