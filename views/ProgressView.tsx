@@ -12,26 +12,21 @@ const ProgressView: React.FC = () => {
             return { total: 0, streak: 0, week: 0 };
         }
         
-        const sortedLogs = [...history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        
-        const uniqueDates = sortedLogs.map(log => {
-            const date = new Date(log.date);
-            const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-            return new Date(date.getTime() + userTimezoneOffset);
-        }).sort((a, b) => b.getTime() - a.getTime());
+        const uniqueDates = Array.from(new Set(history.map(log => new Date(log.date).toDateString())))
+            .map((dateStr: string) => new Date(dateStr))
+            .sort((a, b) => b.getTime() - a.getTime());
 
         let streak = 0;
         if (uniqueDates.length > 0) {
             const today = new Date();
-            today.setHours(0,0,0,0);
-            const yesterday = new Date();
+            today.setHours(0, 0, 0, 0);
+            const yesterday = new Date(today);
             yesterday.setDate(today.getDate() - 1);
-            yesterday.setHours(0,0,0,0);
-            
+
             const mostRecentWorkout = uniqueDates[0];
-            if(mostRecentWorkout.getTime() === today.getTime() || mostRecentWorkout.getTime() === yesterday.getTime()){
+            if (mostRecentWorkout.getTime() === today.getTime() || mostRecentWorkout.getTime() === yesterday.getTime()) {
                 streak = 1;
-                let lastDate = uniqueDates[0];
+                let lastDate = mostRecentWorkout;
                 for (let i = 1; i < uniqueDates.length; i++) {
                     const currentDate = uniqueDates[i];
                     const diffTime = lastDate.getTime() - currentDate.getTime();
@@ -39,8 +34,8 @@ const ProgressView: React.FC = () => {
                     if (diffDays === 1) {
                         streak++;
                         lastDate = currentDate;
-                    } else if (diffDays > 1) {
-                        break; 
+                    } else {
+                        break;
                     }
                 }
             }
