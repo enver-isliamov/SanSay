@@ -14,7 +14,7 @@ const RecommendationsSection: React.FC = () => {
             <SectionCard key={rec.title} title={rec.title} icon={icons[index]}>
                 <ul className="space-y-3 list-disc list-inside">
                     {rec.points.map((point, pointIndex) => (
-                        <li key={pointIndex} className="text-gray-300">
+                        <li key={pointIndex}>
                             {point}
                         </li>
                     ))}
