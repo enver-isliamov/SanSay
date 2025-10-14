@@ -42,12 +42,13 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyCNUjCFNQQcBb8B5HT4qt1FC8eXiK5WTAM",
   authDomain: "toseex-617d5.firebaseapp.com",
   databaseURL: "https://toseex-617d5.firebaseio.com",
   projectId: "toseex-617d5",
-  storageBucket: "toseex-617d5.firebasestorage.app",
+  storageBucket: "toseex-617d5.appspot.com",
   messagingSenderId: "593745524660",
   appId: "1:593745524660:web:0c485398cf7930d86c24e1",
   measurementId: "G-YWP3ZMZ6N4"
