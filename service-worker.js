@@ -1,9 +1,7 @@
-
 const CACHE_NAME = 'bubnovsky-coach-v1';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
-  '/index.tsx',
   '/icon.svg'
 ];
 
