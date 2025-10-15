@@ -44,7 +44,7 @@ import { getFirestore } from "firebase/firestore";
 
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyCNUjCFNQQcBb8B5HT4qt1FC8eXiK5WTAM",
+  apiKey: "AIzaSyCNUJCFNQQcBb8B5HT4qt1FC8eXiK5WTAM",
   authDomain: "toseex-617d5.firebaseapp.com",
   databaseURL: "https://toseex-617d5.firebaseio.com",
   projectId: "toseex-617d5",
