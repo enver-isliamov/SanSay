@@ -46,18 +46,18 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
 
   return (
     <div className="overflow-x-auto -mx-6 sm:-mx-8 px-6 sm:px-8 pb-2">
-        <div className="grid grid-rows-7 grid-flow-col gap-1.5">
-            {weekDays.map(day => <div key={day} className="text-xs text-center text-slate-400 dark:text-gray-400">{day}</div>)}
+        <div className="grid grid-rows-7 grid-flow-col gap-1">
+            {weekDays.map(day => <div key={day} className="w-3 h-3 flex items-center justify-center text-xs text-center text-slate-400 dark:text-gray-400">{day}</div>)}
             {dayGrid.map((day, index) => {
-                if (!day) return <div key={`blank-${index}`} className="w-4 h-4 rounded-sm"></div>
+                if (!day) return <div key={`blank-${index}`} className="w-3 h-3 rounded-sm"></div>
                 const isCompleted = workoutDates.has(day.toDateString());
                 const isToday = day.toDateString() === today.toDateString();
                 return (
                     <div
                         key={day.toISOString()}
-                        className={`w-4 h-4 rounded-sm transition-all
+                        className={`w-3 h-3 rounded-sm transition-all
                             ${isCompleted ? 'bg-cyan-500' : 'bg-slate-200 dark:bg-slate-700/50'}
-                            ${isToday ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-slate-800 ring-cyan-400' : ''}
+                            ${isToday ? 'ring-2 ring-offset-1 ring-offset-white dark:ring-offset-slate-800 ring-cyan-400' : ''}
                         `}
                         title={day.toLocaleDateString('ru-RU')}
                     />
