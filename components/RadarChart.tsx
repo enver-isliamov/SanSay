@@ -10,7 +10,7 @@ const RadarChart: React.FC<RadarChartProps> = ({ data, size = 300 }) => {
     if (numAxes === 0) return null;
 
     const angleSlice = (Math.PI * 2) / numAxes;
-    const radius = size * 0.35;
+    const radius = size * 0.33; // Уменьшен радиус для дополнительного пространства
     const center = size / 2;
     const maxValue = 10;
     const levels = 5;
@@ -35,30 +35,33 @@ const RadarChart: React.FC<RadarChartProps> = ({ data, size = 300 }) => {
 
     const labels = data.map(({ skill }, i) => {
         const angle = angleSlice * i - Math.PI / 2;
-        const labelRadius = radius * 1.15;
+        const labelRadius = radius * 1.25; // Увеличен радиус для метки
         const x = center + labelRadius * Math.cos(angle);
         const y = center + labelRadius * Math.sin(angle);
+        const words = skill.split(' ');
 
-        // Fix: Explicitly type `textAnchor` to satisfy the SVGTextElement's `textAnchor` property requirements.
+        const cosAngle = Math.cos(angle);
         let textAnchor: 'middle' | 'start' | 'end' = 'middle';
-        // A small epsilon to handle floating point comparisons
-        const epsilon = 0.001; 
-        if (angle > epsilon && angle < Math.PI - epsilon) {
-            textAnchor = 'start';
-        } else if (angle > Math.PI + epsilon && angle < 2 * Math.PI - epsilon) {
-            textAnchor = 'end';
-        }
+        if (cosAngle > 0.1) textAnchor = 'start';
+        else if (cosAngle < -0.1) textAnchor = 'end';
+        
+        // Коррекция вертикального выравнивания для многострочных меток
+        const dyBase = 0.35;
+        const dyOffset = (words.length > 1) ? -((words.length - 1) * 0.6) : 0;
+        const dy = dyBase + dyOffset + 'em';
 
         return (
             <text
                 key={i}
                 x={x}
                 y={y}
-                dy="0.35em"
+                dy={dy}
                 textAnchor={textAnchor}
                 className="text-xs fill-slate-500 dark:fill-gray-400 font-medium"
             >
-                {skill}
+                {words.map((word, j) => (
+                    <tspan key={j} x={x} dy={j === 0 ? "0" : "1.2em"}>{word}</tspan>
+                ))}
             </text>
         );
     });
@@ -73,12 +76,19 @@ const RadarChart: React.FC<RadarChartProps> = ({ data, size = 300 }) => {
 
     return (
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+            <defs>
+                <radialGradient id="radarGradient" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="rgba(165, 243, 252, 0.1)" />
+                    <stop offset="100%" stopColor="rgba(6, 182, 212, 0.5)" />
+                </radialGradient>
+            </defs>
             <g>{gridLevels}</g>
             <g>{axes}</g>
             <g>{labels}</g>
             <polygon
                 points={dataPoints}
-                className="fill-cyan-500/30 stroke-cyan-500 dark:fill-cyan-400/30 dark:stroke-cyan-400"
+                fill="url(#radarGradient)"
+                className="stroke-cyan-500 dark:stroke-cyan-400"
                 strokeWidth="2"
                 strokeLinejoin="round"
             />
