@@ -14,10 +14,10 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'ВАШ_SUPABASE_URL';
-const supabaseAnonKey = 'ВАШ_SUPABASE_ANON_KEY';
+const supabaseUrl = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqenN0aWtwa2ljbW5menlzd3pzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2MTk5MzQsImV4cCI6MjA3NjE5NTkzNH0.F6gWGvr1tYDS5aveYO96MDEYIqMLUlw_GujZLnFSfV4';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqenN0aWtwa2ljbW5menlzd3pzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2MTk5MzQsImV4cCI6MjA3NjE5NTkzNH0.F6gWGvr1tYDS5aveYO96MDEYIqMLUlw_GujZLnFSfV4';
 
-if (supabaseUrl === 'ВАШ_SUPABASE_URL' || supabaseAnonKey === 'ВАШ_SUPABASE_ANON_KEY') {
+if (supabaseUrl === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqenN0aWtwa2ljbW5menlzd3pzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2MTk5MzQsImV4cCI6MjA3NjE5NTkzNH0.F6gWGvr1tYDS5aveYO96MDEYIqMLUlw_GujZLnFSfV4' || supabaseAnonKey === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqenN0aWtwa2ljbW5menlzd3pzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2MTk5MzQsImV4cCI6MjA3NjE5NTkzNH0.F6gWGvr1tYDS5aveYO96MDEYIqMLUlw_GujZLnFSfV4') {
     console.warn("Supabase не настроен! Пожалуйста, обновите supabaseClient.ts вашими ключами проекта.");
 }
 
