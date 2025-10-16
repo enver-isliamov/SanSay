@@ -5,6 +5,8 @@ import FeedbackStats from '../components/FeedbackStats';
 import { useAuth } from '../hooks/useAuth';
 import { GoogleIcon } from '../components/icons/GoogleIcon';
 import SkillsMapSection from '../components/SkillsMapSection';
+import ActivityCalendar from '../components/ActivityCalendar';
+import SectionCard from '../components/SectionCard';
 
 interface ProfileViewProps {
   isDarkMode: boolean;
@@ -12,7 +14,7 @@ interface ProfileViewProps {
 }
 
 const ProfileView: React.FC<ProfileViewProps> = ({ isDarkMode, onToggleTheme }) => {
-  const { user, signIn, signOut, loading } = useAuth();
+  const { user, signIn, signOut, loading, userData } = useAuth();
 
   const AuthSection: React.FC = () => {
     if (loading) {
@@ -71,14 +73,28 @@ const ProfileView: React.FC<ProfileViewProps> = ({ isDarkMode, onToggleTheme }) 
     <div className="container mx-auto px-4 py-8 sm:py-12 md:py-16 animate-fade-in">
       <div className="space-y-10">
         <div className="bg-white/60 dark:bg-white/5 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-2xl shadow-lg p-6">
-            <AuthSection />
-            <div className="mt-6 pt-6 border-t border-slate-200 dark:border-white/10 flex justify-between items-center">
-                <span className="text-slate-700 dark:text-gray-300 font-medium">Тёмная тема</span>
-                <ThemeToggle isEnabled={isDarkMode} onToggle={onToggleTheme} />
+           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex-grow w-full">
+                  <AuthSection />
+              </div>
+              <div className="w-full sm:w-auto flex-shrink-0 flex items-center justify-between pt-4 sm:pt-0 mt-4 sm:mt-0 border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-white/10 sm:pl-6 sm:ml-6">
+                  <span className="text-slate-700 dark:text-gray-300 font-medium mr-4">Тёмная тема</span>
+                  <ThemeToggle isEnabled={isDarkMode} onToggle={onToggleTheme} />
+              </div>
             </div>
         </div>
         
-        <SkillsMapSection />
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
+            <div className="lg:col-span-3">
+                <SkillsMapSection />
+            </div>
+            <div className="lg:col-span-2">
+                 <SectionCard title="История Активности" titleClassName="text-xl font-bold">
+                    <ActivityCalendar history={userData.workoutHistory || []} />
+                </SectionCard>
+            </div>
+        </div>
+
         <ProgressView />
         <FeedbackStats />
 
