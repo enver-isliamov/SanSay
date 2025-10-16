@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../supabaseClient';
 import { User, UserData } from '../types';
-import { Session } from '@supabase/supabase-js';
+import { Session } from 'https://esm.sh/@supabase/supabase-js@2';
 import { loadDataFromSupabase, syncLocalToSupabase, saveDataToSupabase, loadDataFromLocalStorage, saveDataToLocalStorage, clearLocalStorageData } from '../services/dataService';
 
 interface AuthContextType {
