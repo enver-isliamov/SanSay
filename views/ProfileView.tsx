@@ -4,6 +4,7 @@ import ProgressView from './ProgressView';
 import FeedbackStats from '../components/FeedbackStats';
 import { useAuth } from '../hooks/useAuth';
 import { GoogleIcon } from '../components/icons/GoogleIcon';
+import SkillsMapSection from '../components/SkillsMapSection';
 
 interface ProfileViewProps {
   isDarkMode: boolean;
@@ -67,6 +68,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ isDarkMode, onToggleTheme }) 
             <AuthSection />
         </div>
         
+        <SkillsMapSection />
         <ProgressView />
         <FeedbackStats />
 
