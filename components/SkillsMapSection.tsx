@@ -34,7 +34,7 @@ const SkillsMapSection: React.FC = () => {
     const hasData = useMemo(() => chartData.some(d => d.value > 0), [chartData]);
 
     return (
-        <SectionCard title="Карта навыков" titleClassName="text-xl sm:text-2xl">
+        <SectionCard title="Карта навыков" titleClassName="text-xl font-bold">
             {hasData ? (
                  <div className="flex justify-center -m-4 sm:-m-6">
                     <RadarChart data={chartData} />
