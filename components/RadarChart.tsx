@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface RadarChartProps {
@@ -9,9 +10,12 @@ const RadarChart: React.FC<RadarChartProps> = ({ data, size = 300 }) => {
     const numAxes = data.length;
     if (numAxes === 0) return null;
 
-    const angleSlice = (Math.PI * 2) / numAxes;
-    const radius = size * 0.33; // Уменьшен радиус для дополнительного пространства
+    const padding = 40; // Generous padding for labels
+    const chartSize = size - padding * 2;
+    const radius = chartSize / 2;
     const center = size / 2;
+
+    const angleSlice = (Math.PI * 2) / numAxes;
     const maxValue = 10;
     const levels = 5;
 
@@ -35,7 +39,7 @@ const RadarChart: React.FC<RadarChartProps> = ({ data, size = 300 }) => {
 
     const labels = data.map(({ skill }, i) => {
         const angle = angleSlice * i - Math.PI / 2;
-        const labelRadius = radius * 1.25; // Увеличен радиус для метки
+        const labelRadius = radius + padding / 2.5; // Place labels within the padding area
         const x = center + labelRadius * Math.cos(angle);
         const y = center + labelRadius * Math.sin(angle);
         const words = skill.split(' ');
@@ -45,7 +49,6 @@ const RadarChart: React.FC<RadarChartProps> = ({ data, size = 300 }) => {
         if (cosAngle > 0.1) textAnchor = 'start';
         else if (cosAngle < -0.1) textAnchor = 'end';
         
-        // Коррекция вертикального выравнивания для многострочных меток
         const dyBase = 0.35;
         const dyOffset = (words.length > 1) ? -((words.length - 1) * 0.6) : 0;
         const dy = dyBase + dyOffset + 'em';
