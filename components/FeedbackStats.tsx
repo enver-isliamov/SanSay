@@ -48,11 +48,11 @@ const FeedbackStats: React.FC = () => {
     const filterButtons: { id: FilterType; label: string; count: number }[] = [
         { id: 'all', label: 'Все', count: good.length + hard.length },
         { id: 'good', label: 'Помогло', count: good.length },
-        { id: 'hard', label: 'Сложно', count: hard.length },
+        { id: 'hard', label: 'Нет', count: hard.length },
     ];
 
     return (
-        <SectionCard title="Отзывы об упражнениях" icon={<AnnotationIcon />} titleClassName="text-xl font-bold">
+        <SectionCard title="Обратная связь" icon={<AnnotationIcon />} titleClassName="text-xl font-bold">
             {hasFeedback ? (
                 <div>
                     <div className="flex justify-center mb-6 p-1 bg-slate-200/60 dark:bg-slate-700/60 rounded-full">
