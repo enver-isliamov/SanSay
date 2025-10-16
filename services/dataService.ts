@@ -1,5 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import { supabase } from '../supabaseClient';
 import { UserData } from '../types';
 
 const KEYS = {
@@ -46,39 +45,53 @@ export const clearLocalStorageData = () => {
     ALL_DATA_KEYS.forEach(key => localStorage.removeItem(key));
 };
 
-// --- Firestore Functions ---
 
-const getUserDocRef = (uid: string) => doc(db, 'users', uid);
+// --- Supabase Functions ---
 
-export const syncLocalToFirestore = async (uid: string) => {
+export const syncLocalToSupabase = async (uid: string) => {
     try {
         const localData = loadDataFromLocalStorage();
-        const docRef = getUserDocRef(uid);
-        await setDoc(docRef, { ...localData, hasSynced: true });
+        // Upsert combines insert and update. It will create a new row if one doesn't exist.
+        const { error } = await supabase
+            .from('profiles')
+            .upsert({ id: uid, user_data: localData });
+        if (error) throw error;
     } catch (e) {
-        console.error("Failed to sync local data to Firestore", e);
+        console.error("Failed to sync local data to Supabase", e);
     }
 };
 
-export const loadDataFromFirestore = async (uid: string): Promise<UserData | null> => {
+export const loadDataFromSupabase = async (uid: string): Promise<UserData | null> => {
     try {
-        const docRef = getUserDocRef(uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-            return docSnap.data() as UserData;
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('user_data')
+            .eq('id', uid)
+            .single();
+
+        if (error) {
+            // 'PGRST116' means no rows were found, which is expected for a new user.
+            // We don't want to log this as a critical error.
+            if (error.code !== 'PGRST116') {
+                throw error;
+            }
+            return null;
         }
-        return null;
+        return data ? data.user_data as UserData : null;
     } catch (e) {
-        console.error("Failed to load data from Firestore", e);
+        console.error("Failed to load data from Supabase", e);
         return null;
     }
 };
 
-export const saveDataToFirestore = async (uid: string, data: UserData) => {
+export const saveDataToSupabase = async (uid: string, data: UserData) => {
     try {
-        const docRef = getUserDocRef(uid);
-        await setDoc(docRef, data, { merge: true });
+         // Upsert is used here as well to ensure the row is created if it somehow doesn't exist.
+        const { error } = await supabase
+            .from('profiles')
+            .upsert({ id: uid, user_data: data });
+        if (error) throw error;
     } catch (e) {
-        console.error("Failed to save data to Firestore", e);
+        console.error("Failed to save data to Supabase", e);
     }
 };
