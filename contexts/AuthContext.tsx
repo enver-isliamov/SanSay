@@ -1,8 +1,8 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut as firebaseSignOut, User as FirebaseUser } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
+import { supabase } from '../supabaseClient';
 import { User, UserData } from '../types';
-import { loadDataFromFirestore, syncLocalToFirestore, saveDataToFirestore, loadDataFromLocalStorage, saveDataToLocalStorage, clearLocalStorageData } from '../services/dataService';
+import { Session } from '@supabase/supabase-js';
+import { loadDataFromSupabase, syncLocalToSupabase, saveDataToSupabase, loadDataFromLocalStorage, saveDataToLocalStorage, clearLocalStorageData } from '../services/dataService';
 
 interface AuthContextType {
     user: User | null;
@@ -34,42 +34,55 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [userData, setUserDataState] = useState<UserData>(defaultUserData);
-
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-            if (firebaseUser) {
-                const formattedUser: User = {
-                    uid: firebaseUser.uid,
-                    displayName: firebaseUser.displayName,
-                    email: firebaseUser.email,
-                    photoURL: firebaseUser.photoURL,
-                };
-                setUser(formattedUser);
-                
-                let data = await loadDataFromFirestore(formattedUser.uid);
-                if (!data) {
-                    console.log("First login, syncing local data to Firestore...");
-                    await syncLocalToFirestore(formattedUser.uid);
-                    data = await loadDataFromFirestore(formattedUser.uid);
-                    // Clear local data after sync to use Firestore as the single source of truth
+    
+    const handleAuthChange = async (session: Session | null) => {
+        const supabaseUser = session?.user;
+        if (supabaseUser) {
+            const formattedUser: User = {
+                uid: supabaseUser.id,
+                displayName: supabaseUser.user_metadata.full_name || supabaseUser.email || 'User',
+                email: supabaseUser.email || null,
+                photoURL: supabaseUser.user_metadata.avatar_url || null,
+            };
+            setUser(formattedUser);
+            
+            let data = await loadDataFromSupabase(formattedUser.uid);
+            if (!data) {
+                console.log("First login, syncing local data to Supabase...");
+                await syncLocalToSupabase(formattedUser.uid);
+                data = await loadDataFromSupabase(formattedUser.uid);
+                 // Clear local data after successful sync to use Supabase as the single source of truth
+                if (data) {
                     clearLocalStorageData();
                 }
-                setUserDataState(data || defaultUserData);
-            } else {
-                setUser(null);
-                const localData = loadDataFromLocalStorage();
-                setUserDataState(localData);
             }
-            setLoading(false);
+            setUserDataState(data || defaultUserData);
+        } else {
+            setUser(null);
+            const localData = loadDataFromLocalStorage();
+            setUserDataState(localData);
+        }
+        setLoading(false);
+    }
+
+    useEffect(() => {
+        // Check for an active session when the component mounts
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            handleAuthChange(session);
         });
 
-        return () => unsubscribe();
+        // Listen for changes in authentication state
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            handleAuthChange(session);
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
     const setUserData = (newUserData: UserData) => {
         setUserDataState(newUserData);
         if (user) {
-            saveDataToFirestore(user.uid, newUserData);
+            saveDataToSupabase(user.uid, newUserData);
         } else {
             saveDataToLocalStorage(newUserData);
         }
@@ -78,8 +91,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const signIn = async () => {
         setLoading(true);
         try {
-            const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+            });
+            if (error) throw error;
         } catch (error) {
             console.error("Error signing in with Google:", error);
             setLoading(false);
@@ -88,7 +103,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const signOut = async () => {
         try {
-            await firebaseSignOut(auth);
+            const { error } = await supabase.auth.signOut();
+            if (error) throw error;
         } catch (error) {
             console.error("Error signing out:", error);
         }
