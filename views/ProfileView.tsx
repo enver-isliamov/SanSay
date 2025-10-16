@@ -1,3 +1,4 @@
+
 import React from 'react';
 import ThemeToggle from '../components/ThemeToggle';
 import ProgressView from './ProgressView';
@@ -36,8 +37,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ isDarkMode, onToggleTheme }) 
                 <img src={user.photoURL} alt="User Avatar" className="h-12 w-12 rounded-full mr-4 flex-shrink-0 border-2 border-cyan-500/50" />
             )}
             <div className="min-w-0">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white truncate">{user.displayName}</h2>
-              <p className="text-sm text-slate-500 dark:text-gray-400 truncate">{user.email}</p>
+              <h2 className="text-base font-bold text-slate-800 dark:text-white truncate">{user.displayName}</h2>
+              <p className="text-xs text-slate-500 dark:text-gray-400 truncate">{user.email}</p>
             </div>
           </div>
           <button
@@ -73,12 +74,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ isDarkMode, onToggleTheme }) 
     <div className="container mx-auto px-4 py-8 sm:py-12 md:py-16 animate-fade-in">
       <div className="space-y-10">
         <div className="bg-white/60 dark:bg-white/5 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-2xl shadow-lg p-6">
-           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex-grow w-full">
+           <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex-grow min-w-[200px]">
                   <AuthSection />
               </div>
-              <div className="w-full sm:w-auto flex-shrink-0 flex items-center justify-between pt-4 sm:pt-0 mt-4 sm:mt-0 border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-white/10 sm:pl-6 sm:ml-6">
-                  <span className="text-slate-700 dark:text-gray-300 font-medium mr-4">Тёмная тема</span>
+              <div className="flex-shrink-0">
                   <ThemeToggle isEnabled={isDarkMode} onToggle={onToggleTheme} />
               </div>
             </div>
