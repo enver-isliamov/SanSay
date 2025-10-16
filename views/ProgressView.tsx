@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import ActivityCalendar from '../components/ActivityCalendar';
 import SectionCard from '../components/SectionCard';
 import { useAuth } from '../hooks/useAuth';
 
@@ -61,28 +60,24 @@ const ProgressView: React.FC = () => {
 
 
     return (
-        <div className="animate-fade-in">
-            <SectionCard title="Статистика" className="mb-6">
-                <div className="flex justify-around items-center text-center">
-                    <div>
-                        <p className="text-4xl sm:text-5xl font-bold text-cyan-500 dark:text-cyan-300">{stats.total}</p>
-                        <p className="text-slate-500 dark:text-gray-400 mt-2 text-sm sm:text-base">Всего</p>
-                    </div>
-                    <div className="h-16 w-px bg-slate-200 dark:bg-white/10"></div>
-                     <div>
-                        <p className="text-4xl sm:text-5xl font-bold text-cyan-500 dark:text-cyan-300">{stats.streak}</p>
-                        <p className="text-slate-500 dark:text-gray-400 mt-2 text-sm sm:text-base">Серия</p>
-                    </div>
-                    <div className="h-16 w-px bg-slate-200 dark:bg-white/10"></div>
-                     <div>
-                        <p className="text-4xl sm:text-5xl font-bold text-cyan-500 dark:text-cyan-300">{stats.week}</p>
-                        <p className="text-slate-500 dark:text-gray-400 mt-2 text-sm sm:text-base">За неделю</p>
-                    </div>
+        <SectionCard title="Статистика" titleClassName="text-xl font-bold">
+            <div className="flex justify-around items-center text-center">
+                <div>
+                    <p className="text-4xl sm:text-5xl font-bold text-cyan-500 dark:text-cyan-300">{stats.total}</p>
+                    <p className="text-slate-500 dark:text-gray-400 mt-2 text-sm sm:text-base">Всего</p>
                 </div>
-            </SectionCard>
-
-            <ActivityCalendar history={history} />
-        </div>
+                <div className="h-16 w-px bg-slate-200 dark:bg-white/10"></div>
+                 <div>
+                    <p className="text-4xl sm:text-5xl font-bold text-cyan-500 dark:text-cyan-300">{stats.streak}</p>
+                    <p className="text-slate-500 dark:text-gray-400 mt-2 text-sm sm:text-base">Серия</p>
+                </div>
+                <div className="h-16 w-px bg-slate-200 dark:bg-white/10"></div>
+                 <div>
+                    <p className="text-4xl sm:text-5xl font-bold text-cyan-500 dark:text-cyan-300">{stats.week}</p>
+                    <p className="text-slate-500 dark:text-gray-400 mt-2 text-sm sm:text-base">За неделю</p>
+                </div>
+            </div>
+        </SectionCard>
     );
 };
 
