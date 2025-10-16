@@ -39,7 +39,8 @@ const RadarChart: React.FC<RadarChartProps> = ({ data, size = 300 }) => {
         const x = center + labelRadius * Math.cos(angle);
         const y = center + labelRadius * Math.sin(angle);
 
-        let textAnchor = 'middle';
+        // Fix: Explicitly type `textAnchor` to satisfy the SVGTextElement's `textAnchor` property requirements.
+        let textAnchor: 'middle' | 'start' | 'end' = 'middle';
         // A small epsilon to handle floating point comparisons
         const epsilon = 0.001; 
         if (angle > epsilon && angle < Math.PI - epsilon) {
