@@ -44,26 +44,23 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
   return (
-    <div className="bg-white/60 dark:bg-white/5 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-white/10 mt-6">
-      <h3 className="font-semibold text-slate-800 dark:text-white mb-4">История Активности</h3>
-      <div className="grid grid-rows-7 grid-flow-col gap-1.5">
-          {weekDays.map(day => <div key={day} className="text-xs text-center text-slate-400 dark:text-gray-400">{day}</div>)}
-          {dayGrid.map((day, index) => {
-              if (!day) return <div key={`blank-${index}`} className="w-4 h-4 rounded-sm"></div>
-              const isCompleted = workoutDates.has(day.toDateString());
-              const isToday = day.toDateString() === today.toDateString();
-              return (
-                  <div
-                      key={day.toISOString()}
-                      className={`w-4 h-4 rounded-sm transition-all
-                          ${isCompleted ? 'bg-cyan-500' : 'bg-slate-200 dark:bg-slate-700/50'}
-                          ${isToday ? 'ring-2 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-800 ring-cyan-400' : ''}
-                      `}
-                      title={day.toLocaleDateString('ru-RU')}
-                  />
-              )
-          })}
-      </div>
+    <div className="grid grid-rows-7 grid-flow-col gap-1.5">
+        {weekDays.map(day => <div key={day} className="text-xs text-center text-slate-400 dark:text-gray-400">{day}</div>)}
+        {dayGrid.map((day, index) => {
+            if (!day) return <div key={`blank-${index}`} className="w-4 h-4 rounded-sm"></div>
+            const isCompleted = workoutDates.has(day.toDateString());
+            const isToday = day.toDateString() === today.toDateString();
+            return (
+                <div
+                    key={day.toISOString()}
+                    className={`w-4 h-4 rounded-sm transition-all
+                        ${isCompleted ? 'bg-cyan-500' : 'bg-slate-200 dark:bg-slate-700/50'}
+                        ${isToday ? 'ring-2 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-800 ring-cyan-400' : ''}
+                    `}
+                    title={day.toLocaleDateString('ru-RU')}
+                />
+            )
+        })}
     </div>
   );
 };
