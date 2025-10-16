@@ -1,103 +1,102 @@
-import React, { useState } from 'react';
-import RecoveryPlanSection from '../components/RecoveryPlanSection';
-import ExercisesSection from '../components/ExercisesSection';
-import RecommendationsSection from '../components/RecommendationsSection';
-import SummarySection from '../components/SummarySection';
-import { ALL_EXERCISES, STAGE_WORKOUTS } from '../constants';
-import { Exercise, RecoveryStage, View, Workout, WorkoutSessionResult } from '../types';
-import WorkoutPlayer from '../components/WorkoutPlayer';
-import WorkoutCompletion from '../components/WorkoutCompletion';
-import { useAuth } from '../hooks/useAuth';
 
-interface ProgramViewProps {
-    setView: (view: View) => void;
+import React from 'react';
+import ThemeToggle from '../components/ThemeToggle';
+import ProgressView from './ProgressView';
+import FeedbackStats from '../components/FeedbackStats';
+import { useAuth } from '../hooks/useAuth';
+import { GoogleIcon } from '../components/icons/GoogleIcon';
+import SkillsMapSection from '../components/SkillsMapSection';
+import ActivityCalendar from '../components/ActivityCalendar';
+import SectionCard from '../components/SectionCard';
+
+interface ProfileViewProps {
+  isDarkMode: boolean;
+  onToggleTheme: () => void;
 }
 
-const ProgramView: React.FC<ProgramViewProps> = ({ setView }) => {
-    const { userData, setUserData } = useAuth();
-    const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
-    const [finishedWorkoutResult, setFinishedWorkoutResult] = useState<WorkoutSessionResult | null>(null);
-    
-    const progress = userData.mainProgramHistory || {};
+const ProfileView: React.FC<ProfileViewProps> = ({ isDarkMode, onToggleTheme }) => {
+  const { user, signIn, signOut, loading, userData } = useAuth();
 
-    const handleStartWorkout = (stage: RecoveryStage) => {
-        const exerciseNames = STAGE_WORKOUTS[stage.id];
-        if (!exerciseNames) return;
-
-        const exercises = exerciseNames
-            .map(name => ALL_EXERCISES.find(ex => ex.name === name))
-            .filter((ex): ex is Exercise => ex !== undefined);
-        
-        if (exercises.length > 0) {
-            setActiveWorkout({
-                id: `stage-${stage.id}`,
-                title: `Этап ${stage.id}: ${stage.stage}`,
-                description: stage.goal,
-                exercises,
-            });
-            setFinishedWorkoutResult(null);
-        }
-    };
-
-    const handleWorkoutComplete = (result: WorkoutSessionResult) => {
-        let newProgress = progress;
-        if (activeWorkout?.id.startsWith('stage-') && result.completed > 0) {
-            const stageId = parseInt(activeWorkout.id.replace('stage-', ''), 10);
-            newProgress = {
-                ...progress,
-                [stageId]: (progress[stageId] || 0) + 1,
-            };
-        }
-        
-        let newExecutionHistory = { ...(userData.exerciseExecutionHistory || {}) };
-        if (result.completedExercises) {
-            result.completedExercises.forEach(ex => {
-                newExecutionHistory[ex.name] = (newExecutionHistory[ex.name] || 0) + 1;
-            });
-        }
-        
-        setUserData({
-            ...userData,
-            mainProgramHistory: newProgress,
-            exerciseExecutionHistory: newExecutionHistory,
-        });
-
-        setActiveWorkout(null);
-        setFinishedWorkoutResult(result);
-    };
-
-    const handleCloseCompletion = () => {
-        setFinishedWorkoutResult(null);
-        setView('today');
-    };
-
-    if (activeWorkout) {
-        return <WorkoutPlayer workout={activeWorkout} onComplete={handleWorkoutComplete} />;
+  const renderAuthContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center h-12">
+          <svg className="animate-spin h-8 w-8 text-cyan-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      );
     }
-    
-    if (finishedWorkoutResult) {
-        return (
-          <div className="container mx-auto px-4 py-8 sm:py-12 md:py-16 flex items-center justify-center min-h-[calc(100vh-6rem)]">
-            <WorkoutCompletion result={finishedWorkoutResult} onRestart={handleCloseCompletion} buttonText="На главный экран" />
-          </div>
-        );
+
+    if (user) {
+      return (
+        <div className="flex items-center justify-between flex-wrap gap-x-4 gap-y-2 w-full">
+            <div className="flex items-center min-w-0 flex-1">
+                {user.photoURL && (
+                    <img src={user.photoURL} alt="User Avatar" className="h-10 w-10 rounded-full mr-3 flex-shrink-0 border-2 border-cyan-500/50" />
+                )}
+                <div className="min-w-0">
+                    <h2 className="text-sm font-bold text-slate-800 dark:text-white truncate">{user.displayName}</h2>
+                    <p className="text-xs text-slate-500 dark:text-gray-400 truncate">{user.email}</p>
+                </div>
+            </div>
+            <div className="flex items-center gap-4 flex-shrink-0">
+                <ThemeToggle isEnabled={isDarkMode} onToggle={onToggleTheme} />
+                <button
+                    onClick={signOut}
+                    className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-gray-200 font-semibold rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors text-xs"
+                >
+                    Выйти
+                </button>
+            </div>
+        </div>
+      );
     }
 
     return (
-        <div className="container mx-auto px-4 py-8 sm:py-12 md:py-16 animate-fade-in">
-            <header className="text-center mb-12">
-                <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 dark:text-white tracking-tight">Программа упражнений</h1>
-                <p className="mt-4 text-lg text-cyan-600 dark:text-cyan-300">Ваш полный комплекс для восстановления</p>
-            </header>
-            
-            <div className="space-y-10">
-                <RecoveryPlanSection onStartWorkout={handleStartWorkout} progressData={progress} />
-                <ExercisesSection />
-                <RecommendationsSection />
-                <SummarySection />
+      <div className="flex items-center justify-between flex-wrap gap-4 min-h-[52px]">
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white">Сохраните свой прогресс</h2>
+          <p className="text-sm text-slate-600 dark:text-gray-300 mt-1">
+            Войдите, чтобы синхронизировать данные.
+          </p>
+        </div>
+        <button
+          onClick={signIn}
+          className="inline-flex items-center justify-center px-5 py-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-white font-semibold rounded-full shadow-md border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex-shrink-0"
+        >
+          <GoogleIcon />
+          <span className="ml-2 text-sm">Войти</span>
+        </button>
+      </div>
+    );
+  };
+  
+  return (
+    <div className="container mx-auto px-4 py-8 sm:py-12 md:py-16 animate-fade-in">
+      <div className="space-y-10">
+        <div className="bg-white/60 dark:bg-white/5 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-2xl shadow-lg p-4 sm:p-6">
+           {renderAuthContent()}
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
+            <div className="lg:col-span-3">
+                <SkillsMapSection />
+            </div>
+            <div className="lg:col-span-2">
+                 <SectionCard title="История Активности" titleClassName="text-xl font-bold">
+                    <ActivityCalendar history={userData.workoutHistory || []} />
+                </SectionCard>
             </div>
         </div>
-    );
+
+        <ProgressView />
+        <FeedbackStats />
+
+      </div>
+    </div>
+  );
 };
 
-export default ProgramView;
+export default ProfileView;
