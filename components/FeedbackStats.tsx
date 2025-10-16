@@ -31,7 +31,7 @@ const FeedbackStats: React.FC = () => {
     const hasFeedback = good.length > 0 || hard.length > 0;
 
     return (
-        <SectionCard title="Отзывы об упражнениях" icon={<AnnotationIcon />} titleClassName="text-xl sm:text-2xl">
+        <SectionCard title="Отзывы об упражнениях" icon={<AnnotationIcon />} titleClassName="text-xl font-bold">
             {hasFeedback ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Good Feedback Card */}
