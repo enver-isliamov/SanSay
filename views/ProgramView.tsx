@@ -51,9 +51,13 @@ const ProgramView: React.FC<ProgramViewProps> = ({ setView }) => {
                 total: result.total,
             };
             const newHistory = [...(userData.workoutHistory || [])];
-            const todayLogIndex = newHistory.findIndex(log => new Date(log.date).toDateString() === todayString);
+            const todayLogIndex = newHistory.findIndex(log => log && new Date(log.date).toDateString() === todayString);
 
             if (todayLogIndex > -1) {
+                // FIX: Ensure the sessions array exists and is an array before pushing to it.
+                if (!Array.isArray(newHistory[todayLogIndex].sessions)) {
+                    newHistory[todayLogIndex].sessions = [];
+                }
                 newHistory[todayLogIndex].sessions.push(newSessionLog);
             } else {
                 newHistory.push({ date: today.toISOString(), sessions: [newSessionLog] });
