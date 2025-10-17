@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TODAY_WORKOUT, RECOVERY_PLAN_DATA } from '../constants';
-import { Workout, WorkoutSessionResult, View, RecoveryStage } from '../types';
+import { Workout, WorkoutSessionResult, View, RecoveryStage, WorkoutLog, WorkoutSessionLog } from '../types';
 import WorkoutPlayer from '../components/WorkoutPlayer';
 import WorkoutCompletion from '../components/WorkoutCompletion';
 import SectionCard from '../components/SectionCard';
@@ -26,8 +26,7 @@ const TodayView: React.FC<TodayViewProps> = ({ setView }) => {
 
     const hasCompletedToday = useMemo(() => {
         const today = new Date().toDateString();
-        const todayLog = history.find(log => new Date(log.date).toDateString() === today);
-        return !!(todayLog && todayLog.completedWorkouts.includes(TODAY_WORKOUT.id));
+        return !!history.find(log => new Date(log.date).toDateString() === today);
     }, [history]);
 
     useEffect(() => {
@@ -127,18 +126,22 @@ const TodayView: React.FC<TodayViewProps> = ({ setView }) => {
             const today = new Date();
             const todayString = today.toDateString();
             
+            const newSessionLog: WorkoutSessionLog = {
+                workoutId: TODAY_WORKOUT.id,
+                completed: result.completed,
+                total: result.total,
+            };
+
             // Update workout history
             const newHistory = [...history];
             const todayLogIndex = newHistory.findIndex(log => new Date(log.date).toDateString() === todayString);
 
             if (todayLogIndex > -1) {
-                if (!newHistory[todayLogIndex].completedWorkouts.includes(TODAY_WORKOUT.id)) {
-                    newHistory[todayLogIndex].completedWorkouts.push(TODAY_WORKOUT.id);
-                }
+                newHistory[todayLogIndex].sessions.push(newSessionLog);
             } else {
                 newHistory.push({
                     date: today.toISOString(),
-                    completedWorkouts: [TODAY_WORKOUT.id]
+                    sessions: [newSessionLog]
                 });
             }
             
