@@ -25,13 +25,13 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   
   let startOfWeekOfFirstWorkout: Date | null = null;
   if (history && history.length > 0) {
-      // CRITICAL FIX: Create a copy of the array before sorting to avoid mutating props.
+      // ИСПРАВЛЕНИЕ: Создаем копию массива перед сортировкой, чтобы не мутировать props.
       const sortedHistory = [...history].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       const firstWorkoutDate = new Date(sortedHistory[0].date);
       firstWorkoutDate.setHours(0,0,0,0);
       
       const dayOfWeek = firstWorkoutDate.getDay(); // Sunday - 0, Monday - 1...
-      const startOfWeekOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Calculate offset from Monday
+      const startOfWeekOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Смещение от понедельника
       
       startOfWeekOfFirstWorkout = new Date(firstWorkoutDate);
       startOfWeekOfFirstWorkout.setDate(firstWorkoutDate.getDate() - startOfWeekOffset);
@@ -40,9 +40,9 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   const monthsToShow = 3;
   const dayGrid: (Date | null)[] = [];
   
-  // Generate grid for 3 months forward from today
+  // Генерируем сетку на 3 месяца вперед от сегодня
   let currentDate = new Date();
-  currentDate.setDate(1); // Start from the 1st of the current month
+  currentDate.setDate(1); // Начинаем с 1-го числа текущего месяца
 
   for (let i = 0; i < monthsToShow; i++) {
       const month = currentDate.getMonth();
@@ -50,7 +50,7 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       
       const firstDayOfMonth = new Date(year, month, 1).getDay();
-      const startDay = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1; // Monday is 0
+      const startDay = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1; // Понедельник = 0
 
       for (let j = 0; j < startDay; j++) {
           dayGrid.push(null);
@@ -66,7 +66,8 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   const getIntensityClass = (date: Date): string => {
     const dayData = workoutDataByDate.get(date.toDateString());
     if (!dayData || dayData.total === 0) {
-      return 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80'; // Future/Rest day style
+      // Стиль для будущих дней или дней отдыха
+      return 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80';
     }
     const percentage = (dayData.completed / dayData.total) * 100;
     if (percentage > 75) return 'bg-cyan-500';
@@ -85,11 +86,11 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
                 const isToday = day.toDateString() === today.toDateString();
                 let cellClass = '';
                 
-                // State 1: Before the user started working out
+                // Состояние 1: Дни до начала тренировок
                 if (startOfWeekOfFirstWorkout && day < startOfWeekOfFirstWorkout) {
-                    cellClass = 'bg-slate-200 dark:bg-slate-700/50'; // "Before start" day style
+                    cellClass = 'bg-slate-200 dark:bg-slate-700/50'; // Стиль "до старта"
                 } else {
-                // State 2 & 3: Workout day or Future/Rest day
+                // Состояние 2 и 3: День с тренировкой или будущий день/день отдыха
                     cellClass = getIntensityClass(day);
                 }
 
