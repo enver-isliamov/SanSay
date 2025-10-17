@@ -68,9 +68,15 @@ export interface WorkoutSessionResult {
     completedExercises?: Exercise[];
 }
 
+export interface WorkoutSessionLog {
+    workoutId: string;
+    completed: number;
+    total: number;
+}
+
 export interface WorkoutLog {
     date: string;
-    completedWorkouts: string[];
+    sessions: WorkoutSessionLog[];
 }
 
 export interface User {
