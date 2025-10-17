@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import SectionCard from '../components/SectionCard';
 import { useAuth } from '../hooks/useAuth';
+import { WorkoutLog } from '../types';
 
 const ProgressView: React.FC = () => {
     const { userData } = useAuth();
-    const history = userData.workoutHistory || [];
+    const history: WorkoutLog[] = userData.workoutHistory || [];
 
     const stats = useMemo(() => {
         if (history.length === 0) {
@@ -51,9 +52,9 @@ const ProgressView: React.FC = () => {
                 workoutDate.setHours(0,0,0,0);
                 return workoutDate >= startOfWeek;
             })
-            .reduce((total, log) => total + log.completedWorkouts.length, 0);
+            .reduce((total, log) => total + log.sessions.length, 0);
 
-        const totalWorkouts = history.reduce((total, log) => total + log.completedWorkouts.length, 0);
+        const totalWorkouts = history.reduce((total, log) => total + log.sessions.length, 0);
 
         return { total: totalWorkouts, streak, week: weekWorkouts };
     }, [history]);
