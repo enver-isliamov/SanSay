@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { WorkoutLog } from '../types';
 
@@ -9,13 +10,10 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // --- Data Preparation ---
   const workoutDataByDate = new Map<string, { completed: number; total: number }>();
   history.forEach(log => {
     const date = new Date(log.date);
-    // Adjust for timezone to get the correct date string
-    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-    const dateStr = new Date(date.getTime() + userTimezoneOffset).toDateString();
+    const dateStr = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toDateString();
     
     const dayData = workoutDataByDate.get(dateStr) || { completed: 0, total: 0 };
     log.sessions.forEach(session => {
@@ -25,35 +23,36 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
     workoutDataByDate.set(dateStr, dayData);
   });
   
-  // --- Find First Workout Date (without mutating props) ---
-  let firstWorkoutDate: Date | null = null;
-  if (history.length > 0) {
-      // FIX: Create a shallow copy using `[...history]` before sorting to avoid mutating state/props.
-      // This resolves a bug that could prevent the Profile view from rendering correctly.
+  let startOfWeekOfFirstWorkout: Date | null = null;
+  if (history && history.length > 0) {
+      // CRITICAL FIX: Create a copy of the array before sorting to avoid mutating props.
       const sortedHistory = [...history].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      if (sortedHistory.length > 0 && sortedHistory[0].date) {
-        firstWorkoutDate = new Date(sortedHistory[0].date);
-        firstWorkoutDate.setHours(0,0,0,0);
-      }
+      const firstWorkoutDate = new Date(sortedHistory[0].date);
+      firstWorkoutDate.setHours(0,0,0,0);
+      
+      const dayOfWeek = firstWorkoutDate.getDay(); // Sunday - 0, Monday - 1...
+      const startOfWeekOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Calculate offset from Monday
+      
+      startOfWeekOfFirstWorkout = new Date(firstWorkoutDate);
+      startOfWeekOfFirstWorkout.setDate(firstWorkoutDate.getDate() - startOfWeekOffset);
   }
 
-  // --- Grid Generation (3 Months into the future) ---
   const monthsToShow = 3;
   const dayGrid: (Date | null)[] = [];
   
-  let currentDate = new Date(today);
-  currentDate.setDate(1); // Start from the beginning of the current month
+  // Generate grid for 3 months forward from today
+  let currentDate = new Date();
+  currentDate.setDate(1); // Start from the 1st of the current month
 
   for (let i = 0; i < monthsToShow; i++) {
       const month = currentDate.getMonth();
       const year = currentDate.getFullYear();
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       
-      // Pad the beginning of the month to align with the correct day of the week
       const firstDayOfMonth = new Date(year, month, 1).getDay();
-      const startDayOffset = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1; // Monday is 0
+      const startDay = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1; // Monday is 0
 
-      for (let j = 0; j < startDayOffset; j++) {
+      for (let j = 0; j < startDay; j++) {
           dayGrid.push(null);
       }
       for (let j = 1; j <= daysInMonth; j++) {
@@ -64,11 +63,10 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   
   const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
-  // --- Helper Functions ---
   const getIntensityClass = (date: Date): string => {
     const dayData = workoutDataByDate.get(date.toDateString());
     if (!dayData || dayData.total === 0) {
-      return 'bg-slate-100 dark:bg-slate-800/50 ring-1 ring-inset ring-slate-200 dark:ring-slate-700';
+      return 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80'; // Future/Rest day style
     }
     const percentage = (dayData.completed / dayData.total) * 100;
     if (percentage > 75) return 'bg-cyan-500';
@@ -79,33 +77,28 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
 
   return (
     <div className="overflow-x-auto -mx-6 sm:-mx-8 px-6 sm:px-8 pb-2">
-        <div className="grid grid-rows-7 grid-flow-col gap-1">
-            {weekDays.map(day => <div key={day} className="w-3 h-3 flex items-center justify-center text-xs text-center text-slate-400 dark:text-gray-400">{day}</div>)}
+        <div className="grid grid-rows-7 grid-flow-col gap-1.5">
+            {weekDays.map(day => <div key={day} className="w-4 h-4 flex items-center justify-center text-xs text-center text-slate-400 dark:text-gray-400 font-medium">{day}</div>)}
             {dayGrid.map((day, index) => {
-                if (!day) return <div key={`blank-${index}`} className="w-3 h-3 rounded-sm"></div>
+                if (!day) return <div key={`blank-${index}`} className="w-4 h-4 rounded-sm"></div>
                 
-                let dayClass = '';
-                const isTodayFlag = day.toDateString() === today.toDateString();
-
-                if (firstWorkoutDate && day < firstWorkoutDate) {
-                    // Days before the user started: empty and gray
-                    dayClass = 'bg-slate-200 dark:bg-slate-700/50 opacity-50';
+                const isToday = day.toDateString() === today.toDateString();
+                let cellClass = '';
+                
+                // State 1: Before the user started working out
+                if (startOfWeekOfFirstWorkout && day < startOfWeekOfFirstWorkout) {
+                    cellClass = 'bg-slate-200 dark:bg-slate-700/50'; // "Before start" day style
                 } else {
-                    if (workoutDataByDate.has(day.toDateString())) {
-                        // Workout day: colored by intensity
-                        dayClass = getIntensityClass(day);
-                    } else {
-                        // Future/rest days: light gray with a border
-                        dayClass = 'bg-slate-100 dark:bg-slate-800/50 ring-1 ring-inset ring-slate-200 dark:ring-slate-700';
-                    }
+                // State 2 & 3: Workout day or Future/Rest day
+                    cellClass = getIntensityClass(day);
                 }
 
                 return (
                     <div
                         key={day.toISOString()}
-                        className={`w-3 h-3 rounded-sm transition-all
-                            ${dayClass}
-                            ${isTodayFlag ? 'ring-2 ring-offset-1 ring-offset-white dark:ring-offset-slate-800 ring-cyan-400' : ''}
+                        className={`w-4 h-4 rounded-sm transition-all
+                            ${cellClass}
+                            ${isToday ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-slate-800 ring-cyan-400' : ''}
                         `}
                         title={day.toLocaleDateString('ru-RU')}
                     />
