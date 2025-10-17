@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { SPECIAL_PROGRAM_DATA } from '../constants';
-import { Workout, WorkoutSessionResult, View, SpecialProgramHistory } from '../types';
+import { Workout, WorkoutSessionResult, View, SpecialProgramHistory, WorkoutSessionLog } from '../types';
 import WorkoutPlayer from '../components/WorkoutPlayer';
 import WorkoutCompletion from '../components/WorkoutCompletion';
 import { PlayIcon } from '../components/icons/PlayIcon';
@@ -44,12 +44,32 @@ const SpecialProgramView: React.FC<{ setView: (view: View) => void }> = ({ setVi
     };
 
     const handleWorkoutComplete = (result: WorkoutSessionResult) => {
-        if (result.completed > 0) {
-            const newHistory: SpecialProgramHistory = {
+        if (result.completed > 0 && activeWorkout) {
+            const today = new Date();
+            const todayString = today.toDateString();
+            
+            // Update Special Program history
+            const newSpHistory: SpecialProgramHistory = {
                 currentDay: Math.min(30, history.currentDay + 1),
                 completedToday: true 
             };
             
+            // Update general workout history for activity calendar
+            const newSessionLog: WorkoutSessionLog = {
+                workoutId: activeWorkout.id,
+                completed: result.completed,
+                total: result.total,
+            };
+            const newHistory = [...(userData.workoutHistory || [])];
+            const todayLogIndex = newHistory.findIndex(log => new Date(log.date).toDateString() === todayString);
+
+            if (todayLogIndex > -1) {
+                newHistory[todayLogIndex].sessions.push(newSessionLog);
+            } else {
+                newHistory.push({ date: today.toISOString(), sessions: [newSessionLog] });
+            }
+            
+            // Update exercise execution history
             let newExecutionHistory = { ...(userData.exerciseExecutionHistory || {}) };
             if (result.completedExercises) {
                 result.completedExercises.forEach(ex => {
@@ -59,7 +79,8 @@ const SpecialProgramView: React.FC<{ setView: (view: View) => void }> = ({ setVi
 
             setUserData({
                 ...userData,
-                specialProgramHistory: newHistory,
+                workoutHistory: newHistory,
+                specialProgramHistory: newSpHistory,
                 exerciseExecutionHistory: newExecutionHistory
             });
         }
