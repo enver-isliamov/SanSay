@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { WorkoutLog } from '../types';
 
@@ -5,9 +6,61 @@ interface ActivityCalendarProps {
   history: WorkoutLog[];
 }
 
+const generateSmoothPath = (
+    data: number[],
+    width: number,
+    height: number,
+    paddingY: number
+): { linePath: string; areaPath: string } => {
+    const maxVal = Math.max(1, ...data);
+    const usableHeight = height - paddingY * 2;
+
+    const points = data.map((value, index) => ({
+        x: (width / (data.length - 1 || 1)) * index,
+        y: height - paddingY - ((value / maxVal) * usableHeight),
+    }));
+
+    if (points.length <= 1) {
+        const x = points[0]?.x ?? 0;
+        const y = points[0]?.y ?? height - paddingY;
+        const linePath = `M ${x},${y} L ${x},${y}`;
+        const areaPath = `M 0,${height} L ${x},${y} L ${x},${width} L ${width},${height} Z`;
+        return { linePath, areaPath };
+    }
+
+    const controlPoint = (current: {x:number, y:number}, previous: {x:number, y:number}, next: {x:number, y:number}, reverse = false) => {
+        const p = previous || current;
+        const n = next || current;
+        const smoothing = 0.2;
+        const dx = n.x - p.x;
+        const dy = n.y - p.y;
+        const angle = Math.atan2(dy, dx) + (reverse ? Math.PI : 0);
+        const length = Math.sqrt(dx**2 + dy**2) * smoothing;
+        const x = current.x + Math.cos(angle) * length;
+        const y = current.y + Math.sin(angle) * length;
+        return [x, y];
+    };
+
+    const lineCommand = (point: {x:number, y:number}, i: number, a: {x:number, y:number}[]) => {
+        const [cpsX, cpsY] = controlPoint(a[i - 1], a[i - 2], point);
+        const [cpeX, cpeY] = controlPoint(point, a[i - 1], a[i + 1], true);
+        return `C ${cpsX},${cpsY} ${cpeX},${cpeY} ${point.x},${point.y}`;
+    };
+
+    const linePath = points.reduce((acc, point, i, a) =>
+        i === 0 ? `M ${point.x},${point.y}` : `${acc} ${lineCommand(point, i, a)}`,
+    "");
+
+    const areaPath = `${linePath} L ${width},${height} L 0,${height} Z`;
+
+    return { linePath, areaPath };
+};
+
+
 const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   const [displayDate, setDisplayDate] = useState(new Date());
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [animationClass, setAnimationClass] = useState('animate-fade-in');
 
   const workoutDataByDate = useMemo(() => {
     const map = new Map<string, { completed: number; total: number }>();
@@ -34,7 +87,6 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   const weekGrid = useMemo(() => {
     const startOfWeek = new Date(displayDate);
     const dayOfWeek = startOfWeek.getDay();
-    // Adjust to make Monday the first day (getDay() is 0 for Sunday)
     const diff = startOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
     startOfWeek.setDate(diff);
     startOfWeek.setHours(0, 0, 0, 0);
@@ -54,23 +106,26 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
         return dayData ? dayData.completed : 0;
     });
   }, [weekGrid, workoutDataByDate]);
+  
+  const { linePath, areaPath } = useMemo(() => {
+      const CHART_WIDTH = 100;
+      const CHART_HEIGHT = 40;
+      const PADDING_Y = CHART_HEIGHT * 0.15;
+      return generateSmoothPath(chartData, CHART_WIDTH, CHART_HEIGHT, PADDING_Y);
+  }, [chartData]);
 
-  const maxCompleted = useMemo(() => Math.max(1, ...chartData), [chartData]);
 
-  const goToPreviousWeek = useCallback(() => {
-    setDisplayDate(prev => {
-        const newDate = new Date(prev);
-        newDate.setDate(prev.getDate() - 7);
-        return newDate;
-    });
-  }, []);
-
-  const goToNextWeek = useCallback(() => {
-    setDisplayDate(prev => {
-        const newDate = new Date(prev);
-        newDate.setDate(prev.getDate() + 7);
-        return newDate;
-    });
+  const changeWeek = useCallback((direction: 'next' | 'prev') => {
+    setAnimationClass(direction === 'next' ? 'animate-slide-out-left' : 'animate-slide-out-right');
+    
+    setTimeout(() => {
+        setDisplayDate(prev => {
+            const newDate = new Date(prev);
+            newDate.setDate(prev.getDate() + (direction === 'next' ? 7 : -7));
+            return newDate;
+        });
+        setAnimationClass(direction === 'next' ? 'animate-slide-in-right' : 'animate-slide-in-left');
+    }, 200);
   }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -84,9 +139,9 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
     const diff = touchStartX - touchEndX;
 
     if (diff > 50) { // Swipe left
-      goToNextWeek();
+      changeWeek('next');
     } else if (diff < -50) { // Swipe right
-      goToPreviousWeek();
+      changeWeek('prev');
     }
 
     setTouchStartX(null);
@@ -99,31 +154,18 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
 
   const getIntensityClass = (date: Date): string => {
     const dayData = workoutDataByDate.get(date.toDateString());
-    if (!dayData || dayData.total === 0) {
+    if (!dayData || dayData.completed === 0) {
       return 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80';
     }
-    const percentage = (dayData.completed / dayData.total) * 100;
-    if (percentage > 75) return 'bg-cyan-500';
-    if (percentage > 50) return 'bg-cyan-400';
-    if (percentage > 25) return 'bg-cyan-300';
+    const percentage = dayData.total > 0 ? (dayData.completed / dayData.total) * 100 : 100;
+    if (percentage >= 75) return 'bg-cyan-500';
+    if (percentage >= 50) return 'bg-cyan-400';
+    if (percentage >= 25) return 'bg-cyan-300';
     return 'bg-cyan-200';
   }
 
   const monthName = displayDate.toLocaleString('ru-RU', { month: 'long' });
   const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
-
-  const CHART_WIDTH = 100;
-  const CHART_HEIGHT = 40;
-  const PADDING_Y = CHART_HEIGHT * 0.1; // 10% padding top and bottom
-  const USABLE_HEIGHT = CHART_HEIGHT - PADDING_Y * 2;
-  
-  const chartPoints = chartData.map((value, index) => {
-      const x = (CHART_WIDTH / 6) * index;
-      const y = CHART_HEIGHT - PADDING_Y - ((value / maxCompleted) * USABLE_HEIGHT);
-      return `${x.toFixed(2)},${y.toFixed(2)}`;
-  }).join(' ');
-
-  const areaPoints = `0,${CHART_HEIGHT} ${chartPoints} ${CHART_WIDTH},${CHART_HEIGHT}`;
 
   return (
     <div>
@@ -137,69 +179,71 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Line Chart */}
-        <div className="h-24 mb-4">
-            <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} className="w-full h-full" preserveAspectRatio="none">
-                <defs>
-                    <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" className="text-cyan-500/30 dark:text-cyan-400/30" stopColor="currentColor" />
-                        <stop offset="100%" className="text-cyan-500/0 dark:text-cyan-400/0" stopColor="currentColor" stopOpacity="0"/>
-                    </linearGradient>
-                </defs>
-                <polyline
-                    fill="url(#chartGradient)"
-                    points={areaPoints}
-                />
-                <polyline
-                    fill="none"
-                    className="stroke-cyan-500 dark:stroke-cyan-400"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    points={chartPoints}
-                />
-            </svg>
-        </div>
+        <div className={animationClass}>
+            {/* Smooth Chart */}
+            <div className="h-24 mb-4">
+                <svg viewBox="0 0 100 40" className="w-full h-full" preserveAspectRatio="none">
+                    <defs>
+                        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" className="text-cyan-500/30 dark:text-cyan-400/30" stopColor="currentColor" />
+                            <stop offset="100%" className="text-cyan-500/0 dark:text-cyan-400/0" stopColor="currentColor" stopOpacity="0"/>
+                        </linearGradient>
+                    </defs>
+                    <path
+                        fill="url(#chartGradient)"
+                        d={areaPath}
+                    />
+                    <path
+                        fill="none"
+                        className="stroke-cyan-500 dark:stroke-cyan-400"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d={linePath}
+                    />
+                </svg>
+            </div>
 
-        {/* Calendar Week */}
-        <div className="grid grid-cols-7 gap-1.5 justify-items-center">
-            {weekGrid.map((day) => {
-                const isToday = day.toDateString() === today.toDateString();
-                const cellClass = getIntensityClass(day);
+            {/* Calendar Week */}
+            <div className="grid grid-cols-7 gap-1.5 justify-items-center">
+                {weekGrid.map((day) => {
+                    const isToday = day.toDateString() === today.toDateString();
+                    const cellClass = getIntensityClass(day);
 
-                const dayData = workoutDataByDate.get(day.toDateString());
-                const hasWorkout = !!dayData && dayData.total > 0;
-                const textColorClass = hasWorkout
-                    ? 'text-white/80'
-                    : 'text-slate-400 dark:text-gray-500';
+                    const dayData = workoutDataByDate.get(day.toDateString());
+                    const hasWorkout = !!dayData && dayData.completed > 0;
+                    const textColorClass = hasWorkout
+                        ? 'text-white'
+                        : 'text-slate-500 dark:text-gray-400';
 
-                return (
+                    return (
+                        <div
+                            key={day.toISOString()}
+                            className={`w-full aspect-square rounded-lg transition-all flex items-center justify-center
+                                ${cellClass}
+                                ${isToday ? 'ring-2 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-900 ring-cyan-400' : ''}
+                            `}
+                            title={day.toLocaleDateString('ru-RU')}
+                        >
+                          <span className={`text-xs font-bold leading-none ${textColorClass}`}>
+                            {day.getDate()}
+                          </span>
+                        </div>
+                    )
+                })}
+            </div>
+
+            {/* Day labels */}
+            <div className="grid grid-cols-7 gap-1.5 justify-items-center mt-2">
+                 {weekDays.map(day =>
                     <div
-                        key={day.toISOString()}
-                        className={`w-full aspect-square rounded-sm transition-all flex items-center justify-center
-                            ${cellClass}
-                            ${isToday ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 ring-cyan-400' : ''}
-                        `}
-                        title={day.toLocaleDateString('ru-RU')}
-                    >
-                      <span className={`text-[10px] sm:text-xs font-medium leading-none ${textColorClass}`}>
-                        {day.getDate()}
-                      </span>
+                        key={day}
+                        className="w-full h-5 flex items-center justify-center text-xs text-center text-slate-400 dark:text-gray-400 font-medium">
+                        {day}
                     </div>
-                )
-            })}
-        </div>
-
-        {/* Day labels */}
-        <div className="grid grid-cols-7 gap-1.5 justify-items-center mt-2">
-             {weekDays.map(day =>
-                <div
-                    key={day}
-                    className="w-full h-5 flex items-center justify-center text-xs text-center text-slate-400 dark:text-gray-400 font-medium">
-                    {day}
-                </div>
-            )}
+                )}
+            </div>
         </div>
       </div>
     </div>
