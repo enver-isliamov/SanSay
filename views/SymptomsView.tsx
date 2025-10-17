@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SYMPTOMS_DATA, SYMPTOM_WORKOUTS, ALL_EXERCISES } from '../constants';
-import { Workout, WorkoutSessionResult, Exercise, View } from '../types';
+import { Workout, WorkoutSessionResult, Exercise, View, WorkoutSessionLog } from '../types';
 import WorkoutPlayer from '../components/WorkoutPlayer';
 import WorkoutCompletion from '../components/WorkoutCompletion';
 import { PlayIcon } from '../components/icons/PlayIcon';
@@ -36,12 +36,38 @@ const SymptomsView: React.FC<SymptomsViewProps> = ({ setView }) => {
   };
 
   const handleComplete = (result: WorkoutSessionResult) => {
-    if (result.completed > 0 && result.completedExercises) {
+    if (result.completed > 0 && activeWorkout) {
+        const today = new Date();
+        const todayString = today.toDateString();
+
+        // Update workout history for activity calendar
+        const newSessionLog: WorkoutSessionLog = {
+            workoutId: activeWorkout.id,
+            completed: result.completed,
+            total: result.total,
+        };
+        const newHistory = [...(userData.workoutHistory || [])];
+        const todayLogIndex = newHistory.findIndex(log => new Date(log.date).toDateString() === todayString);
+
+        if (todayLogIndex > -1) {
+            newHistory[todayLogIndex].sessions.push(newSessionLog);
+        } else {
+            newHistory.push({ date: today.toISOString(), sessions: [newSessionLog] });
+        }
+
+        // Update exercise execution history
         let newExecutionHistory = { ...(userData.exerciseExecutionHistory || {}) };
-        result.completedExercises.forEach(ex => {
-            newExecutionHistory[ex.name] = (newExecutionHistory[ex.name] || 0) + 1;
+        if (result.completedExercises) {
+            result.completedExercises.forEach(ex => {
+                newExecutionHistory[ex.name] = (newExecutionHistory[ex.name] || 0) + 1;
+            });
+        }
+        
+        setUserData({ 
+            ...userData,
+            workoutHistory: newHistory,
+            exerciseExecutionHistory: newExecutionHistory
         });
-        setUserData({ ...userData, exerciseExecutionHistory: newExecutionHistory });
     }
 
     setActiveWorkout(null);
