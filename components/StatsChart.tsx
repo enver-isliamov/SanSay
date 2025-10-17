@@ -26,7 +26,8 @@ const StatsChart: React.FC<StatsChartProps> = ({ history, variant = 'full' }) =>
             const diffInWeeks = Math.floor(diffInMs / (msInDay * 7));
 
             if (diffInWeeks >= 0 && diffInWeeks < weeksToShow) {
-                weeks[weeksToShow - 1 - diffInWeeks] += log.completedWorkouts.length;
+                // Fix: Correctly access the `sessions` property on the `WorkoutLog` type instead of the non-existent `completedWorkouts`.
+                weeks[weeksToShow - 1 - diffInWeeks] += log.sessions.length;
             }
         });
 
