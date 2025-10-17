@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { WorkoutLog } from '../types';
 
@@ -10,9 +9,11 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // --- Data Preparation ---
   const workoutDataByDate = new Map<string, { completed: number; total: number }>();
   history.forEach(log => {
     const date = new Date(log.date);
+    // Adjust for timezone to get the correct date string
     const userTimezoneOffset = date.getTimezoneOffset() * 60000;
     const dateStr = new Date(date.getTime() + userTimezoneOffset).toDateString();
     
@@ -24,32 +25,33 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
     workoutDataByDate.set(dateStr, dayData);
   });
   
-  let firstDayToShow: Date | null = null;
+  // --- Find First Workout Date (without mutating props) ---
+  let firstWorkoutDate: Date | null = null;
   if (history.length > 0) {
-      const firstWorkoutDate = new Date(history.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0].date);
+      // FIX: Create a shallow copy using `[...history]` before sorting to avoid mutating state/props.
+      // This resolves a bug that could prevent the Profile view from rendering correctly.
+      const sortedHistory = [...history].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      firstWorkoutDate = new Date(sortedHistory[0].date);
       firstWorkoutDate.setHours(0,0,0,0);
-      const dayOfWeek = firstWorkoutDate.getDay(); // Sunday - 0, Monday - 1...
-      const startOfWeekOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Calculate offset from Monday
-      firstDayToShow = new Date(firstWorkoutDate);
-      firstDayToShow.setDate(firstWorkoutDate.getDate() - startOfWeekOffset);
   }
 
+  // --- Grid Generation (3 Months into the future) ---
   const monthsToShow = 3;
   const dayGrid: (Date | null)[] = [];
   
   let currentDate = new Date(today);
-  currentDate.setMonth(currentDate.getMonth() - monthsToShow + 1);
-  currentDate.setDate(1);
+  currentDate.setDate(1); // Start from the beginning of the current month
 
   for (let i = 0; i < monthsToShow; i++) {
       const month = currentDate.getMonth();
       const year = currentDate.getFullYear();
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       
+      // Pad the beginning of the month to align with the correct day of the week
       const firstDayOfMonth = new Date(year, month, 1).getDay();
-      const startDay = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1; 
+      const startDayOffset = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1; // Monday is 0
 
-      for (let j = 0; j < startDay; j++) {
+      for (let j = 0; j < startDayOffset; j++) {
           dayGrid.push(null);
       }
       for (let j = 1; j <= daysInMonth; j++) {
@@ -60,10 +62,11 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   
   const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
+  // --- Helper Functions ---
   const getIntensityClass = (date: Date): string => {
     const dayData = workoutDataByDate.get(date.toDateString());
     if (!dayData || dayData.total === 0) {
-      return 'bg-slate-200 dark:bg-slate-700/50';
+      return 'bg-slate-100 dark:bg-slate-800/50 ring-1 ring-inset ring-slate-200 dark:ring-slate-700';
     }
     const percentage = (dayData.completed / dayData.total) * 100;
     if (percentage > 75) return 'bg-cyan-500';
@@ -79,19 +82,28 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
             {dayGrid.map((day, index) => {
                 if (!day) return <div key={`blank-${index}`} className="w-3 h-3 rounded-sm"></div>
                 
-                if (firstDayToShow && day < firstDayToShow) {
-                    return <div key={day.toISOString()} className="w-3 h-3 rounded-sm"></div>
-                }
+                let dayClass = '';
+                const isTodayFlag = day.toDateString() === today.toDateString();
 
-                const isToday = day.toDateString() === today.toDateString();
-                const intensityClass = getIntensityClass(day);
+                if (firstWorkoutDate && day < firstWorkoutDate) {
+                    // Days before the user started: empty and gray
+                    dayClass = 'bg-slate-200 dark:bg-slate-700/50 opacity-50';
+                } else {
+                    if (workoutDataByDate.has(day.toDateString())) {
+                        // Workout day: colored by intensity
+                        dayClass = getIntensityClass(day);
+                    } else {
+                        // Future/rest days: light gray with a border
+                        dayClass = 'bg-slate-100 dark:bg-slate-800/50 ring-1 ring-inset ring-slate-200 dark:ring-slate-700';
+                    }
+                }
 
                 return (
                     <div
                         key={day.toISOString()}
                         className={`w-3 h-3 rounded-sm transition-all
-                            ${intensityClass}
-                            ${isToday ? 'ring-2 ring-offset-1 ring-offset-white dark:ring-offset-slate-800 ring-cyan-400' : ''}
+                            ${dayClass}
+                            ${isTodayFlag ? 'ring-2 ring-offset-1 ring-offset-white dark:ring-offset-slate-800 ring-cyan-400' : ''}
                         `}
                         title={day.toLocaleDateString('ru-RU')}
                     />
