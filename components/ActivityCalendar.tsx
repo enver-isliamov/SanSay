@@ -91,9 +91,9 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   return (
     <div className="overflow-x-auto -mx-6 sm:-mx-8 px-6 sm:px-8 pb-2">
         <div className="grid grid-rows-7 grid-flow-col gap-1.5">
-            {weekDays.map(day => <div key={day} className="w-4 h-4 flex items-center justify-center text-xs text-center text-slate-400 dark:text-gray-400 font-medium">{day}</div>)}
+            {weekDays.map(day => <div key={day} className="w-5 h-5 flex items-center justify-center text-xs text-center text-slate-400 dark:text-gray-400 font-medium">{day}</div>)}
             {dayGrid.map((day, index) => {
-                if (!day) return <div key={`blank-${index}`} className="w-4 h-4 rounded-sm"></div>
+                if (!day) return <div key={`blank-${index}`} className="w-5 h-5 rounded-sm"></div>
                 
                 const isToday = day.toDateString() === today.toDateString();
                 let cellClass = '';
@@ -104,15 +104,25 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
                     cellClass = getIntensityClass(day);
                 }
 
+                const dayData = workoutDataByDate.get(day.toDateString());
+                const hasWorkout = !!dayData && dayData.total > 0;
+                const textColorClass = hasWorkout
+                    ? 'text-white/80'
+                    : 'text-slate-400 dark:text-gray-500';
+
                 return (
                     <div
                         key={day.toISOString()}
-                        className={`w-4 h-4 rounded-sm transition-all
+                        className={`w-5 h-5 rounded-sm transition-all flex items-center justify-center
                             ${cellClass}
                             ${isToday ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-slate-800 ring-cyan-400' : ''}
                         `}
                         title={day.toLocaleDateString('ru-RU')}
-                    />
+                    >
+                      <span className={`text-[9px] font-medium leading-none ${textColorClass}`}>
+                        {day.getDate()}
+                      </span>
+                    </div>
                 )
             })}
         </div>
