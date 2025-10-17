@@ -124,7 +124,7 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
             return newDate;
         });
         setAnimationClass(direction === 'next' ? 'animate-slide-in-right' : 'animate-slide-in-left');
-    }, 200);
+    }, 300);
   }, []);
 
   const handleGoToToday = useCallback(() => {
@@ -137,7 +137,7 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
     setTimeout(() => {
         setDisplayDate(today);
         setAnimationClass(direction === 'next' ? 'animate-slide-in-right' : 'animate-slide-in-left');
-    }, 200);
+    }, 300);
   }, [displayDate]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
