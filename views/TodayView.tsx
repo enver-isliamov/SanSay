@@ -26,7 +26,7 @@ const TodayView: React.FC<TodayViewProps> = ({ setView }) => {
 
     const hasCompletedToday = useMemo(() => {
         const today = new Date().toDateString();
-        return !!history.find(log => new Date(log.date).toDateString() === today);
+        return !!history.find(log => log && new Date(log.date).toDateString() === today);
     }, [history]);
 
     useEffect(() => {
@@ -76,9 +76,9 @@ const TodayView: React.FC<TodayViewProps> = ({ setView }) => {
     }, [programProgress]);
 
     const streak = useMemo(() => {
-        if (history.length === 0) return 0;
+        if (!Array.isArray(history) || history.length === 0) return 0;
 
-        const uniqueDates = Array.from(new Set(history.map(log => new Date(log.date).toDateString())))
+        const uniqueDates = Array.from(new Set(history.filter(log => log && log.date).map(log => new Date(log.date).toDateString())))
             .map((dateStr: string) => new Date(dateStr))
             .sort((a, b) => b.getTime() - a.getTime());
 
@@ -133,10 +133,14 @@ const TodayView: React.FC<TodayViewProps> = ({ setView }) => {
             };
 
             // Update workout history
-            const newHistory = [...history];
-            const todayLogIndex = newHistory.findIndex(log => new Date(log.date).toDateString() === todayString);
+            const newHistory = [...(userData.workoutHistory || [])];
+            const todayLogIndex = newHistory.findIndex(log => log && new Date(log.date).toDateString() === todayString);
 
             if (todayLogIndex > -1) {
+                // FIX: Ensure the sessions array exists and is an array before pushing to it.
+                if (!Array.isArray(newHistory[todayLogIndex].sessions)) {
+                    newHistory[todayLogIndex].sessions = [];
+                }
                 newHistory[todayLogIndex].sessions.push(newSessionLog);
             } else {
                 newHistory.push({
