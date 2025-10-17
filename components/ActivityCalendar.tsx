@@ -85,16 +85,15 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   }, [history]);
 
   const weekGrid = useMemo(() => {
-    const startOfWeek = new Date(displayDate);
-    const dayOfWeek = startOfWeek.getDay();
-    const diff = startOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-    startOfWeek.setDate(diff);
-    startOfWeek.setHours(0, 0, 0, 0);
+    // Let displayDate be the 4th day (center) of our 7-day view.
+    const startDay = new Date(displayDate);
+    startDay.setDate(startDay.getDate() - 3);
+    startDay.setHours(0, 0, 0, 0);
 
     const week: Date[] = [];
     for (let i = 0; i < 7; i++) {
-        const day = new Date(startOfWeek);
-        day.setDate(startOfWeek.getDate() + i);
+        const day = new Date(startDay);
+        day.setDate(startDay.getDate() + i);
         week.push(day);
     }
     return week;
@@ -130,7 +129,7 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
 
   const handleGoToToday = useCallback(() => {
     const today = new Date();
-    if (isTodayVisible) return;
+    if (displayDate.toDateString() === today.toDateString()) return;
 
     const direction = today > displayDate ? 'next' : 'prev';
     setAnimationClass(direction === 'next' ? 'animate-slide-out-left' : 'animate-slide-out-right');
@@ -186,16 +185,14 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
 
   return (
     <div>
-      <div className="flex justify-between items-center text-center mb-4 h-6">
-        <div className="flex-1 text-center">
-            <h4 className="font-semibold text-slate-700 dark:text-white">
-            {capitalizedMonth} {displayDate.getFullYear()}
-            </h4>
-        </div>
+      <div className="relative flex justify-center items-center text-center mb-4 h-6">
+        <h4 className="font-semibold text-slate-700 dark:text-white">
+          {capitalizedMonth} {displayDate.getFullYear()}
+        </h4>
         {!isTodayVisible && (
             <button
                 onClick={handleGoToToday}
-                className="absolute right-0 text-xs font-semibold text-cyan-500 dark:text-cyan-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors animate-fade-in"
+                className="absolute right-0 top-1/2 -translate-y-1/2 text-xs font-semibold text-cyan-500 dark:text-cyan-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors animate-fade-in"
             >
                 Сегодня
             </button>
