@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { WorkoutLog } from '../types';
 
@@ -11,22 +10,37 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   today.setHours(0, 0, 0, 0);
 
   const workoutDataByDate = new Map<string, { completed: number; total: number }>();
-  history.forEach(log => {
-    const date = new Date(log.date);
-    const dateStr = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toDateString();
-    
-    const dayData = workoutDataByDate.get(dateStr) || { completed: 0, total: 0 };
-    log.sessions.forEach(session => {
-        dayData.completed += session.completed;
-        dayData.total += session.total;
+  // Защита: Убеждаемся, что history - это массив, прежде чем его обрабатывать
+  if (Array.isArray(history)) {
+    history.forEach(log => {
+      // Защитное программирование: пропускаем некорректные записи
+      if (!log || !log.date || isNaN(new Date(log.date).getTime())) {
+        return; 
+      }
+      const date = new Date(log.date);
+      const dateStr = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toDateString();
+      
+      const dayData = workoutDataByDate.get(dateStr) || { completed: 0, total: 0 };
+      
+      // Защита: Убеждаемся, что sessions - это массив, перед итерацией
+      if (Array.isArray(log.sessions)) {
+        log.sessions.forEach(session => {
+            if (session && typeof session.completed === 'number' && typeof session.total === 'number') {
+              dayData.completed += session.completed;
+              dayData.total += session.total;
+            }
+        });
+      }
+      workoutDataByDate.set(dateStr, dayData);
     });
-    workoutDataByDate.set(dateStr, dayData);
-  });
+  }
   
   let startOfWeekOfFirstWorkout: Date | null = null;
-  if (history && history.length > 0) {
-      // ИСПРАВЛЕНИЕ: Создаем копию массива перед сортировкой, чтобы не мутировать props.
-      const sortedHistory = [...history].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  // Фильтруем некорректные данные перед их использованием
+  const validHistory = Array.isArray(history) ? history.filter(log => log && log.date && !isNaN(new Date(log.date).getTime())) : [];
+
+  if (validHistory.length > 0) {
+      const sortedHistory = [...validHistory].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       const firstWorkoutDate = new Date(sortedHistory[0].date);
       firstWorkoutDate.setHours(0,0,0,0);
       
@@ -40,9 +54,8 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   const monthsToShow = 3;
   const dayGrid: (Date | null)[] = [];
   
-  // Генерируем сетку на 3 месяца вперед от сегодня
   let currentDate = new Date();
-  currentDate.setDate(1); // Начинаем с 1-го числа текущего месяца
+  currentDate.setDate(1);
 
   for (let i = 0; i < monthsToShow; i++) {
       const month = currentDate.getMonth();
@@ -50,7 +63,7 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       
       const firstDayOfMonth = new Date(year, month, 1).getDay();
-      const startDay = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1; // Понедельник = 0
+      const startDay = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
 
       for (let j = 0; j < startDay; j++) {
           dayGrid.push(null);
@@ -66,7 +79,6 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   const getIntensityClass = (date: Date): string => {
     const dayData = workoutDataByDate.get(date.toDateString());
     if (!dayData || dayData.total === 0) {
-      // Стиль для будущих дней или дней отдыха
       return 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80';
     }
     const percentage = (dayData.completed / dayData.total) * 100;
@@ -86,11 +98,9 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
                 const isToday = day.toDateString() === today.toDateString();
                 let cellClass = '';
                 
-                // Состояние 1: Дни до начала тренировок
                 if (startOfWeekOfFirstWorkout && day < startOfWeekOfFirstWorkout) {
-                    cellClass = 'bg-slate-200 dark:bg-slate-700/50'; // Стиль "до старта"
+                    cellClass = 'bg-slate-200 dark:bg-slate-700/50';
                 } else {
-                // Состояние 2 и 3: День с тренировкой или будущий день/день отдыха
                     cellClass = getIntensityClass(day);
                 }
 
