@@ -4,7 +4,7 @@ import ExercisesSection from '../components/ExercisesSection';
 import RecommendationsSection from '../components/RecommendationsSection';
 import SummarySection from '../components/SummarySection';
 import { ALL_EXERCISES, STAGE_WORKOUTS } from '../constants';
-import { Exercise, RecoveryStage, View, Workout, WorkoutSessionResult } from '../types';
+import { Exercise, RecoveryStage, View, Workout, WorkoutSessionResult, WorkoutSessionLog } from '../types';
 import WorkoutPlayer from '../components/WorkoutPlayer';
 import WorkoutCompletion from '../components/WorkoutCompletion';
 import { useAuth } from '../hooks/useAuth';
@@ -40,27 +40,50 @@ const ProgramView: React.FC<ProgramViewProps> = ({ setView }) => {
     };
 
     const handleWorkoutComplete = (result: WorkoutSessionResult) => {
-        let newProgress = progress;
-        if (activeWorkout?.id.startsWith('stage-') && result.completed > 0) {
-            const stageId = parseInt(activeWorkout.id.replace('stage-', ''), 10);
-            newProgress = {
-                ...progress,
-                [stageId]: (progress[stageId] || 0) + 1,
+        if (result.completed > 0 && activeWorkout) {
+            const today = new Date();
+            const todayString = today.toDateString();
+
+            // Update workout history for activity calendar
+            const newSessionLog: WorkoutSessionLog = {
+                workoutId: activeWorkout.id,
+                completed: result.completed,
+                total: result.total,
             };
-        }
-        
-        let newExecutionHistory = { ...(userData.exerciseExecutionHistory || {}) };
-        if (result.completedExercises) {
-            result.completedExercises.forEach(ex => {
-                newExecutionHistory[ex.name] = (newExecutionHistory[ex.name] || 0) + 1;
+            const newHistory = [...(userData.workoutHistory || [])];
+            const todayLogIndex = newHistory.findIndex(log => new Date(log.date).toDateString() === todayString);
+
+            if (todayLogIndex > -1) {
+                newHistory[todayLogIndex].sessions.push(newSessionLog);
+            } else {
+                newHistory.push({ date: today.toISOString(), sessions: [newSessionLog] });
+            }
+
+            // Update main program progress
+            let newProgress = progress;
+            if (activeWorkout?.id.startsWith('stage-')) {
+                const stageId = parseInt(activeWorkout.id.replace('stage-', ''), 10);
+                newProgress = {
+                    ...progress,
+                    [stageId]: (progress[stageId] || 0) + 1,
+                };
+            }
+            
+            // Update exercise execution history
+            let newExecutionHistory = { ...(userData.exerciseExecutionHistory || {}) };
+            if (result.completedExercises) {
+                result.completedExercises.forEach(ex => {
+                    newExecutionHistory[ex.name] = (newExecutionHistory[ex.name] || 0) + 1;
+                });
+            }
+            
+            setUserData({
+                ...userData,
+                workoutHistory: newHistory,
+                mainProgramHistory: newProgress,
+                exerciseExecutionHistory: newExecutionHistory,
             });
         }
-        
-        setUserData({
-            ...userData,
-            mainProgramHistory: newProgress,
-            exerciseExecutionHistory: newExecutionHistory,
-        });
 
         setActiveWorkout(null);
         setFinishedWorkoutResult(result);
