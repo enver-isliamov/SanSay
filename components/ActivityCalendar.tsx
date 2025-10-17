@@ -31,8 +31,10 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
       // FIX: Create a shallow copy using `[...history]` before sorting to avoid mutating state/props.
       // This resolves a bug that could prevent the Profile view from rendering correctly.
       const sortedHistory = [...history].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      firstWorkoutDate = new Date(sortedHistory[0].date);
-      firstWorkoutDate.setHours(0,0,0,0);
+      if (sortedHistory.length > 0 && sortedHistory[0].date) {
+        firstWorkoutDate = new Date(sortedHistory[0].date);
+        firstWorkoutDate.setHours(0,0,0,0);
+      }
   }
 
   // --- Grid Generation (3 Months into the future) ---
