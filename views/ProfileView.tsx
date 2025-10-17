@@ -1,4 +1,3 @@
-
 import React from 'react';
 import ThemeToggle from '../components/ThemeToggle';
 import ProgressView from './ProgressView';
@@ -8,6 +7,8 @@ import { GoogleIcon } from '../components/icons/GoogleIcon';
 import SkillsMapSection from '../components/SkillsMapSection';
 import ActivityCalendar from '../components/ActivityCalendar';
 import SectionCard from '../components/SectionCard';
+import SymptomToSkillViz from './visualizations/SymptomToSkillViz';
+import WorkoutContributionViz from './visualizations/WorkoutContributionViz';
 
 interface ProfileViewProps {
   isDarkMode: boolean;
@@ -92,6 +93,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({ isDarkMode, onToggleTheme }) 
         </div>
 
         <ProgressView />
+        
+        <SymptomToSkillViz />
+        <WorkoutContributionViz />
+
         <FeedbackStats />
 
       </div>
