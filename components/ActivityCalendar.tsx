@@ -1,5 +1,4 @@
-
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { WorkoutLog } from '../types';
 
 interface ActivityCalendarProps {
@@ -106,7 +105,7 @@ const WeekContent: React.FC<{
     };
 
     return (
-        <div>
+        <div className="px-1">
             <div className="h-24 mb-4">
                 <svg viewBox="0 0 100 40" className="w-full h-full" preserveAspectRatio="none">
                     <defs>
@@ -159,9 +158,16 @@ const WeekContent: React.FC<{
 
 const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [transition, setTransition] = useState<{ date: Date; direction: 'next' | 'prev' } | null>(null);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  
+  const [style, setStyle] = useState({
+      transform: 'translateX(-33.333%)',
+      transition: 'none',
+  });
+  const touchStartX = useRef(0);
+  const dragOffset = useRef(0);
+  const isDragging = useRef(false);
+  const isTransitioning = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const workoutDataByDate = useMemo(() => {
     const map = new Map<string, { completed: number; total: number }>();
     if (Array.isArray(history)) {
@@ -184,46 +190,88 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
     return map;
   }, [history]);
 
-  const changeDay = useCallback((direction: 'next' | 'prev') => {
-    if (transition) return;
+  const { prevDate, centerDate, nextDate } = useMemo(() => {
+    const cd = new Date(currentDate);
+    const pd = new Date(currentDate);
+    pd.setDate(cd.getDate() - 1);
+    const nd = new Date(currentDate);
+    nd.setDate(cd.getDate() + 1);
+    return { prevDate: pd, centerDate: cd, nextDate: nd };
+  }, [currentDate]);
 
-    const newDate = new Date(currentDate);
-    newDate.setDate(currentDate.getDate() + (direction === 'next' ? 1 : -1));
+  const shift = useCallback((direction: 'next' | 'prev' | 'none') => {
+    isTransitioning.current = true;
+    let newTransform = 'translateX(-33.333%)';
+    if (direction === 'next') {
+        newTransform = 'translateX(-66.666%)';
+    } else if (direction === 'prev') {
+        newTransform = 'translateX(0%)';
+    }
     
-    setTransition({ date: newDate, direction });
+    setStyle({
+        transform: newTransform,
+        transition: 'transform 0.3s ease-out',
+    });
     
     setTimeout(() => {
-        setCurrentDate(newDate);
-        setTransition(null);
-    }, 300);
-  }, [currentDate, transition]);
+        if (direction !== 'none') {
+            setCurrentDate(d => {
+                const newDate = new Date(d);
+                newDate.setDate(d.getDate() + (direction === 'next' ? 1 : -1));
+                return newDate;
+            });
 
-  const handleGoToToday = useCallback(() => {
-    const today = new Date();
-    if (currentDate.toDateString() === today.toDateString() || transition) return;
-
-    const direction = today > currentDate ? 'next' : 'prev';
-    setTransition({ date: today, direction });
-    
-    setTimeout(() => {
-        setCurrentDate(today);
-        setTransition(null);
+            setStyle({
+                transform: 'translateX(-33.333%)',
+                transition: 'none',
+            });
+        }
+        isTransitioning.current = false;
     }, 300);
-  }, [currentDate, transition]);
+  }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStartX(e.targetTouches[0].clientX);
+    if (isTransitioning.current) return;
+    touchStartX.current = e.targetTouches[0].clientX;
+    isDragging.current = true;
+    setStyle(s => ({ ...s, transition: 'none' }));
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX === null) return;
-    const touchEndX = e.changedTouches[0].clientX;
-    const diff = touchStartX - touchEndX;
-    if (diff > 50) changeDay('next');
-    else if (diff < -50) changeDay('prev');
-    setTouchStartX(null);
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging.current || isTransitioning.current) return;
+    const currentX = e.targetTouches[0].clientX;
+    dragOffset.current = currentX - touchStartX.current;
+    setStyle(s => ({
+        ...s,
+        transform: `translateX(calc(-33.333% + ${dragOffset.current}px))`,
+    }));
   };
 
+  const handleTouchEnd = () => {
+    if (isTransitioning.current) return;
+    isDragging.current = false;
+    const containerWidth = containerRef.current?.offsetWidth;
+    if (!containerWidth) return;
+
+    const threshold = containerWidth / 4;
+
+    if (dragOffset.current < -threshold) {
+        shift('next');
+    } else if (dragOffset.current > threshold) {
+        shift('prev');
+    } else {
+        shift('none');
+    }
+    dragOffset.current = 0;
+  };
+
+  const handleGoToToday = useCallback(() => {
+    if (isTransitioning.current) return;
+    const today = new Date();
+    if (currentDate.toDateString() === today.toDateString()) return;
+    setCurrentDate(today);
+  }, [currentDate]);
+  
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
@@ -235,14 +283,14 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
     return today >= start && today <= end;
   }, [currentDate, today]);
 
-  const monthName = currentDate.toLocaleString('ru-RU', { month: 'long' });
+  const monthName = centerDate.toLocaleString('ru-RU', { month: 'long' });
   const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
 
   return (
     <div>
       <div className="relative flex justify-center items-center text-center mb-4 h-6">
         <h4 className="font-semibold text-slate-700 dark:text-white">
-          {capitalizedMonth} {currentDate.getFullYear()}
+          {capitalizedMonth} {centerDate.getFullYear()}
         </h4>
         {!isTodayVisible && (
             <button
@@ -254,24 +302,23 @@ const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
         )}
       </div>
       <div
+        ref={containerRef}
         className="relative overflow-hidden cursor-grab"
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div 
-          key={currentDate.getTime()}
-          className={transition ? (transition.direction === 'next' ? 'animate-slide-out-right' : 'animate-slide-out-left') : ''}
-        >
-          <WeekContent displayDate={currentDate} workoutDataByDate={workoutDataByDate} />
-        </div>
-        {transition && (
-           <div 
-              key={transition.date.getTime()}
-              className={`absolute top-0 left-0 w-full h-full ${transition.direction === 'next' ? 'animate-slide-in-right' : 'animate-slide-in-left'}`}
-            >
-              <WeekContent displayDate={transition.date} workoutDataByDate={workoutDataByDate} />
+        <div className="flex w-[300%]" style={style}>
+            <div className="w-1/3 flex-shrink-0">
+                 <WeekContent displayDate={prevDate} workoutDataByDate={workoutDataByDate} />
             </div>
-        )}
+            <div className="w-1/3 flex-shrink-0">
+                 <WeekContent displayDate={centerDate} workoutDataByDate={workoutDataByDate} />
+            </div>
+            <div className="w-1/3 flex-shrink-0">
+                 <WeekContent displayDate={nextDate} workoutDataByDate={workoutDataByDate} />
+            </div>
+        </div>
       </div>
     </div>
   );
