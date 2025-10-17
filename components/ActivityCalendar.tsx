@@ -1,327 +1,199 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { WorkoutLog } from '../types';
 
 interface ActivityCalendarProps {
   history: WorkoutLog[];
 }
 
-const generateSmoothPath = (
-    data: number[],
-    width: number,
-    height: number,
-    paddingY: number
-): { linePath: string; areaPath: string } => {
-    const maxVal = Math.max(1, ...data);
-    const usableHeight = height - paddingY * 2;
+const DAY_WIDTH = 48; // Ширина одного дня в пикселях (40px + 8px gap)
+const DAYS_TO_RENDER = 60; // Количество дней для рендера в обе стороны от сегодняшнего
 
-    const points = data.map((value, index) => ({
-        x: (width / (data.length - 1 || 1)) * index,
-        y: height - paddingY - ((value / maxVal) * usableHeight),
-    }));
+// --- Компонент для одного дня ---
+const DayColumn: React.FC<{
+    date: Date;
+    isToday: boolean;
+    workoutData?: { completed: number; total: number };
+}> = React.memo(({ date, isToday, workoutData }) => {
+    const intensity = workoutData && workoutData.total > 0
+        ? Math.min(1, workoutData.completed / workoutData.total)
+        : 0;
 
-    if (points.length <= 1) {
-        const x = points[0]?.x ?? 0;
-        const y = points[0]?.y ?? height - paddingY;
-        const linePath = `M ${x},${y} L ${x},${y}`;
-        const areaPath = `M 0,${height} L ${x},${y} L ${x},${width} L ${width},${height} Z`;
-        return { linePath, areaPath };
-    }
-
-    const controlPoint = (current: {x:number, y:number}, previous: {x:number, y:number}, next: {x:number, y:number}, reverse = false) => {
-        const p = previous || current;
-        const n = next || current;
-        const smoothing = 0.2;
-        const dx = n.x - p.x;
-        const dy = n.y - p.y;
-        const angle = Math.atan2(dy, dx) + (reverse ? Math.PI : 0);
-        const length = Math.sqrt(dx**2 + dy**2) * smoothing;
-        const x = current.x + Math.cos(angle) * length;
-        const y = current.y + Math.sin(angle) * length;
-        return [x, y];
-    };
-
-    const lineCommand = (point: {x:number, y:number}, i: number, a: {x:number, y:number}[]) => {
-        const [cpsX, cpsY] = controlPoint(a[i - 1], a[i - 2], point);
-        const [cpeX, cpeY] = controlPoint(point, a[i - 1], a[i + 1], true);
-        return `C ${cpsX},${cpsY} ${cpeX},${cpeY} ${point.x},${point.y}`;
-    };
-
-    const linePath = points.reduce((acc, point, i, a) =>
-        i === 0 ? `M ${point.x},${point.y}` : `${acc} ${lineCommand(point, i, a)}`,
-    "");
-
-    const areaPath = `${linePath} L ${width},${height} L 0,${height} Z`;
-
-    return { linePath, areaPath };
-};
-
-
-const WeekContent: React.FC<{
-    displayDate: Date;
-    workoutDataByDate: Map<string, { completed: number; total: number }>;
-}> = ({ displayDate, workoutDataByDate }) => {
-    const weekGrid = useMemo(() => {
-        const startDay = new Date(displayDate);
-        startDay.setDate(startDay.getDate() - 3);
-        startDay.setHours(0, 0, 0, 0);
-
-        const week: Date[] = [];
-        for (let i = 0; i < 7; i++) {
-            const day = new Date(startDay);
-            day.setDate(startDay.getDate() + i);
-            week.push(day);
-        }
-        return week;
-    }, [displayDate]);
-
-    const chartData = useMemo(() => {
-        return weekGrid.map(day => {
-            const dayData = workoutDataByDate.get(day.toDateString());
-            return dayData ? dayData.completed : 0;
-        });
-    }, [weekGrid, workoutDataByDate]);
-
-    const { linePath, areaPath } = useMemo(() => {
-        const CHART_WIDTH = 100;
-        const CHART_HEIGHT = 40;
-        const PADDING_Y = CHART_HEIGHT * 0.15;
-        return generateSmoothPath(chartData, CHART_WIDTH, CHART_HEIGHT, PADDING_Y);
-    }, [chartData]);
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-
-    const getIntensityClass = (date: Date): string => {
-        const dayData = workoutDataByDate.get(date.toDateString());
-        if (!dayData || dayData.completed === 0) {
-            return 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80';
-        }
-        const percentage = dayData.total > 0 ? (dayData.completed / dayData.total) * 100 : 100;
-        if (percentage >= 75) return 'bg-cyan-500';
-        if (percentage >= 50) return 'bg-cyan-400';
-        if (percentage >= 25) return 'bg-cyan-300';
-        return 'bg-cyan-200';
-    };
+    const weekDays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
     return (
-        <div className="px-1">
-            <div className="h-24 mb-4">
-                <svg viewBox="0 0 100 40" className="w-full h-full" preserveAspectRatio="none">
-                    <defs>
-                        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" className="text-cyan-500/30 dark:text-cyan-400/30" stopColor="currentColor" />
-                            <stop offset="100%" className="text-cyan-500/0 dark:text-cyan-400/0" stopColor="currentColor" stopOpacity="0"/>
-                        </linearGradient>
-                    </defs>
-                    <path fill="url(#chartGradient)" d={areaPath} />
-                    <path
-                        fill="none"
-                        className="stroke-cyan-500 dark:stroke-cyan-400"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d={linePath}
-                    />
-                </svg>
+        <div className="flex flex-col items-center justify-end h-full w-10 flex-shrink-0">
+            <div 
+                className="w-4 rounded-t-md transition-colors bg-cyan-200 dark:bg-cyan-800"
+                style={{ height: '2px' }} // Минимальная высота, чтобы всегда было видно
+            >
+                <div
+                    className="w-full bg-cyan-500 rounded-t-md"
+                    style={{ height: `${intensity * 100}%` }}
+                />
             </div>
-            <div className="grid grid-cols-7 gap-1.5 justify-items-center">
-                {weekGrid.map((day) => {
-                    const isToday = day.toDateString() === today.toDateString();
-                    const cellClass = getIntensityClass(day);
-                    const dayData = workoutDataByDate.get(day.toDateString());
-                    const hasWorkout = !!dayData && dayData.completed > 0;
-                    const textColorClass = hasWorkout ? 'text-white' : 'text-slate-500 dark:text-gray-400';
-                    return (
-                        <div
-                            key={day.toISOString()}
-                            className={`w-full aspect-square rounded-lg transition-all flex items-center justify-center ${cellClass} ${isToday ? 'ring-2 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-900 ring-cyan-400' : ''}`}
-                            title={day.toLocaleDateString('ru-RU')}
-                        >
-                            <span className={`text-xs font-bold leading-none ${textColorClass}`}>{day.getDate()}</span>
-                        </div>
-                    );
-                })}
+            <div
+                className={`mt-2 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-colors ${
+                    isToday
+                        ? 'bg-cyan-500 text-white'
+                        : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200'
+                }`}
+            >
+                {date.getDate()}
             </div>
-            <div className="grid grid-cols-7 gap-1.5 justify-items-center mt-2">
-                {weekDays.map(day =>
-                    <div key={day} className="w-full h-5 flex items-center justify-center text-xs text-center text-slate-400 dark:text-gray-400 font-medium">
-                        {day}
-                    </div>
-                )}
+            <div className="mt-1 text-xs text-slate-400 dark:text-gray-500">
+                {weekDays[date.getDay()]}
             </div>
         </div>
     );
-};
+});
 
 
+// --- Основной компонент календаря ---
 const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ history }) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [style, setStyle] = useState({
-      transform: 'translateX(-33.333%)',
-      transition: 'none',
-  });
-  const touchStartX = useRef(0);
-  const dragOffset = useRef(0);
-  const isDragging = useRef(false);
-  const isTransitioning = useRef(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const offset = useRef(0);
+    const isDragging = useRef(false);
+    const startX = useRef(0);
+    const lastX = useRef(0);
+    const velocity = useRef(0);
+    const animationFrame = useRef<number | null>(null);
 
-  const workoutDataByDate = useMemo(() => {
-    const map = new Map<string, { completed: number; total: number }>();
-    if (Array.isArray(history)) {
-      history.forEach(log => {
-        if (!log || !log.date || isNaN(new Date(log.date).getTime())) return;
-        const date = new Date(log.date);
-        const dateStr = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toDateString();
-        const dayData = map.get(dateStr) || { completed: 0, total: 0 };
-        if (Array.isArray(log.sessions)) {
-          log.sessions.forEach(session => {
-            if (session && typeof session.completed === 'number' && typeof session.total === 'number') {
-              dayData.completed += session.completed;
-              dayData.total += session.total;
+    const workoutDataByDate = useMemo(() => {
+        const map = new Map<string, { completed: number; total: number }>();
+        if (Array.isArray(history)) {
+            history.forEach(log => {
+                if (!log || !log.date || isNaN(new Date(log.date).getTime())) return;
+                const date = new Date(log.date);
+                const dateStr = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toDateString();
+                const dayData = map.get(dateStr) || { completed: 0, total: 0 };
+                if (Array.isArray(log.sessions)) {
+                    log.sessions.forEach(session => {
+                        if (session && typeof session.completed === 'number' && typeof session.total === 'number') {
+                            dayData.completed += session.completed;
+                            dayData.total += session.total;
+                        }
+                    });
+                }
+                map.set(dateStr, dayData);
+            });
+        }
+        return map;
+    }, [history]);
+
+    const { dates, todayIndex } = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const datesArray: Date[] = [];
+        for (let i = -DAYS_TO_RENDER; i <= DAYS_TO_RENDER; i++) {
+            const d = new Date(today);
+            d.setDate(today.getDate() + i);
+            datesArray.push(d);
+        }
+        return { dates: datesArray, todayIndex: DAYS_TO_RENDER };
+    }, []);
+
+    const setPosition = useCallback((newOffset: number) => {
+        if (!contentRef.current) return;
+        const minOffset = 0;
+        const maxOffset = -(contentRef.current.scrollWidth - (containerRef.current?.clientWidth || 0));
+        offset.current = Math.max(maxOffset, Math.min(minOffset, newOffset));
+        contentRef.current.style.transform = `translateX(${offset.current}px)`;
+    }, []);
+
+    const startInertia = useCallback(() => {
+        if (animationFrame.current) cancelAnimationFrame(animationFrame.current);
+        
+        const FRICTION = 0.95;
+        const tick = () => {
+            setPosition(offset.current + velocity.current);
+            velocity.current *= FRICTION;
+
+            if (Math.abs(velocity.current) > 0.5) {
+                animationFrame.current = requestAnimationFrame(tick);
+            } else {
+                velocity.current = 0;
             }
-          });
+        };
+        animationFrame.current = requestAnimationFrame(tick);
+    }, [setPosition]);
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if (animationFrame.current) cancelAnimationFrame(animationFrame.current);
+        isDragging.current = true;
+        startX.current = e.touches[0].clientX;
+        lastX.current = startX.current;
+        velocity.current = 0;
+        if (contentRef.current) {
+            contentRef.current.style.transition = 'none';
         }
-        map.set(dateStr, dayData);
-      });
-    }
-    return map;
-  }, [history]);
-
-  const { prevDate, centerDate, nextDate } = useMemo(() => {
-    const cd = new Date(currentDate);
-    const pd = new Date(currentDate);
-    pd.setDate(cd.getDate() - 1);
-    const nd = new Date(currentDate);
-    nd.setDate(cd.getDate() + 1);
-    return { prevDate: pd, centerDate: cd, nextDate: nd };
-  }, [currentDate]);
-
-  const shift = useCallback((direction: 'next' | 'prev' | 'none') => {
-    isTransitioning.current = true;
-    let newTransform = 'translateX(-33.333%)';
-    if (direction === 'next') {
-        newTransform = 'translateX(-66.666%)';
-    } else if (direction === 'prev') {
-        newTransform = 'translateX(0%)';
-    }
+    };
     
-    setStyle({
-        transform: newTransform,
-        transition: 'transform 0.3s ease-out',
-    });
-    
-    setTimeout(() => {
-        if (direction !== 'none') {
-            setCurrentDate(d => {
-                const newDate = new Date(d);
-                newDate.setDate(d.getDate() + (direction === 'next' ? 1 : -1));
-                return newDate;
-            });
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (!isDragging.current) return;
+        const currentX = e.touches[0].clientX;
+        const delta = currentX - startX.current;
+        const frameDelta = currentX - lastX.current;
+        lastX.current = currentX;
+        velocity.current = frameDelta;
+        setPosition(offset.current + delta);
+    };
 
-            setStyle({
-                transform: 'translateX(-33.333%)',
-                transition: 'none',
-            });
+    const handleTouchEnd = () => {
+        isDragging.current = false;
+        startInertia();
+    };
+    
+    const goToToday = useCallback(() => {
+        if (animationFrame.current) cancelAnimationFrame(animationFrame.current);
+        const containerWidth = containerRef.current?.clientWidth || 0;
+        const targetOffset = -(todayIndex * DAY_WIDTH - containerWidth / 2 + DAY_WIDTH / 2);
+        
+        if (contentRef.current) {
+             contentRef.current.style.transition = 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
+             setPosition(targetOffset);
         }
-        isTransitioning.current = false;
-    }, 300);
-  }, []);
+    }, [todayIndex, setPosition]);
+    
+    // Set initial position
+    useEffect(() => {
+        goToToday();
+    }, [goToToday]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (isTransitioning.current) return;
-    touchStartX.current = e.targetTouches[0].clientX;
-    isDragging.current = true;
-    setStyle(s => ({ ...s, transition: 'none' }));
-  };
+    const todayDate = useMemo(() => {
+        const d = new Date();
+        d.setHours(0,0,0,0);
+        return d.toDateString();
+    }, []);
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging.current || isTransitioning.current) return;
-    const currentX = e.targetTouches[0].clientX;
-    dragOffset.current = currentX - touchStartX.current;
-    setStyle(s => ({
-        ...s,
-        transform: `translateX(calc(-33.333% + ${dragOffset.current}px))`,
-    }));
-  };
-
-  const handleTouchEnd = () => {
-    if (isTransitioning.current) return;
-    isDragging.current = false;
-    const containerWidth = containerRef.current?.offsetWidth;
-    if (!containerWidth) return;
-
-    const threshold = containerWidth / 4;
-
-    if (dragOffset.current < -threshold) {
-        shift('next');
-    } else if (dragOffset.current > threshold) {
-        shift('prev');
-    } else {
-        shift('none');
-    }
-    dragOffset.current = 0;
-  };
-
-  const handleGoToToday = useCallback(() => {
-    if (isTransitioning.current) return;
-    const today = new Date();
-    if (currentDate.toDateString() === today.toDateString()) return;
-    setCurrentDate(today);
-  }, [currentDate]);
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const isTodayVisible = useMemo(() => {
-    const start = new Date(currentDate);
-    start.setDate(start.getDate() - 3);
-    const end = new Date(currentDate);
-    end.setDate(end.getDate() + 3);
-    return today >= start && today <= end;
-  }, [currentDate, today]);
-
-  const monthName = centerDate.toLocaleString('ru-RU', { month: 'long' });
-  const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
-
-  return (
-    <div>
-      <div className="relative flex justify-center items-center text-center mb-4 h-6">
-        <h4 className="font-semibold text-slate-700 dark:text-white">
-          {capitalizedMonth} {centerDate.getFullYear()}
-        </h4>
-        {!isTodayVisible && (
+    return (
+        <div className="relative">
+            <div
+                ref={containerRef}
+                className="w-full h-40 overflow-hidden cursor-grab"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+            >
+                <div ref={contentRef} className="flex h-full items-end py-4" style={{ gap: `${DAY_WIDTH - 40}px` }}>
+                    {dates.map(date => (
+                        <DayColumn
+                            key={date.toISOString()}
+                            date={date}
+                            isToday={date.toDateString() === todayDate}
+                            workoutData={workoutDataByDate.get(date.toDateString())}
+                        />
+                    ))}
+                </div>
+            </div>
             <button
-                onClick={handleGoToToday}
-                className="absolute right-0 top-1/2 -translate-y-1/2 text-xs font-semibold text-cyan-500 dark:text-cyan-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors animate-fade-in"
+                onClick={goToToday}
+                className="absolute right-0 -top-10 text-xs font-semibold text-cyan-500 dark:text-cyan-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors bg-slate-200/60 dark:bg-slate-700/60 px-3 py-1 rounded-full"
             >
                 Сегодня
             </button>
-        )}
-      </div>
-      <div
-        ref={containerRef}
-        className="relative overflow-hidden cursor-grab"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        <div className="flex w-[300%]" style={style}>
-            <div className="w-1/3 flex-shrink-0">
-                 <WeekContent displayDate={prevDate} workoutDataByDate={workoutDataByDate} />
-            </div>
-            <div className="w-1/3 flex-shrink-0">
-                 <WeekContent displayDate={centerDate} workoutDataByDate={workoutDataByDate} />
-            </div>
-            <div className="w-1/3 flex-shrink-0">
-                 <WeekContent displayDate={nextDate} workoutDataByDate={workoutDataByDate} />
-            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default ActivityCalendar;
